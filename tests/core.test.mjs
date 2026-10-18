@@ -1,0 +1,33 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import cfg from '../config.json' with { type: 'json' };
+import { planBatches, selectPost, validatePost, ownsClaim, containerState, localNow, mediaUrl, validateMediaResponses } from '../src/core.mjs';
+
+const now = new Date('2026-10-17T23:00:00Z');
+function post(i, changes = {}) { return { id: 'teste-' + i, tipo: 'FEED', versao: 'v1', ig_media_type: 'REELS', legenda: 'TESTE FICTÍCIO ' + i, status: 'pronto_para_postar', aprovacao: { por: 'Gabriel', em: '2026-10-17T10:00:00-03:00', versao: 'v1' }, midias: [{ ordem: 1, sha256: i.toString(16).padStart(64, '0'), url_publica: 'https://raw.githubusercontent.com/exemplo/teste/main/' + i + '.mp4' }], ...changes }; }
+function cal(n) { return { account: 'trindayy', timezone: cfg.timezone, lotes: [{ id: 'teste-lote', inicio: '2026-10-18', posts: Array.from({ length: n }, (_, i) => post(i + 1)) }] }; }
+
+test('21 vídeos ocupam exatamente três horários por dia em sete dias', () => { const r = planBatches(cal(21), [], cfg, now); assert.equal(r.length, 21); for (const d of new Set(r.map(x => x.data))) assert.deepEqual(r.filter(x => x.data === d).map(x => x.slot), cfg.slots); });
+test('7 vídeos são distribuídos em sete dias sem repetição', () => { const r = planBatches(cal(7), [], cfg, now); assert.equal(new Set(r.map(x => x.data)).size, 7); assert.equal(new Set(r.map(x => x.fingerprint)).size, 7); assert.ok(r.every(x => x.slot === '12:00')); });
+test('14 vídeos ocupam manhã e tarde todos os dias', () => { const r = planBatches(cal(14), [], cfg, now); assert.ok(r.every(x => x.slot === '10:00' || x.slot === '18:00')); assert.equal(new Set(r.map(x => x.data)).size, 7); });
+test('excedentes vão para semana seguinte', () => { const r = planBatches(cal(25), [], cfg, now); assert.equal(r.length, 25); assert.ok(r[21].data >= '2026-10-25'); });
+test('mesmo lote não duplica nem remarca a fila existente', () => { const r = planBatches(cal(7), [], cfg, now); assert.deepEqual(planBatches(cal(7), r, cfg, now), []); });
+test('conteúdo idêntico com outro id não republica', () => { const c = cal(1), r = planBatches(c, [], cfg, now); c.lotes[0].posts[0].id = 'outro-id'; assert.deepEqual(planBatches(c, r, cfg, now), []); });
+test('novo lote respeita horários ocupados', () => { const first = planBatches(cal(7), [], cfg, now); const other = cal(7); other.lotes[0].posts = other.lotes[0].posts.map((p, i) => post(i + 100)); const next = planBatches(other, first, cfg, now); const keys = [...first, ...next].map(x => x.data + x.slot); assert.equal(new Set(keys).size, keys.length); });
+test('não agenda retroativamente', () => { const c = cal(21); c.lotes[0].inicio = '2026-10-10'; assert.ok(planBatches(c, [], cfg, now).every(x => x.data >= '2026-10-18')); });
+test('rascunhos não entram na fila', () => { const c = cal(1); c.lotes[0].posts[0].status = 'rascunho'; assert.deepEqual(planBatches(c, [], cfg, now), []); });
+test('aprovação exige versão exata', () => assert.throws(() => validatePost(post(1, { versao: 'v2' }), cfg), /versão/));
+test('aprovação sem versão não é aceita', () => assert.throws(() => validatePost(post(1, { versao: undefined }), cfg), /Versão/));
+test('Stories são recusados', () => assert.throws(() => validatePost(post(1, { tipo: 'STORY', ig_media_type: 'STORIES' }), cfg), /Stories/));
+test('mídia ausente bloqueia lote', () => assert.throws(() => validatePost(post(1, { midias: [] }), cfg), /sem mídia/));
+test('não trunca silenciosamente carrossel incompleto', () => assert.throws(() => validatePost(post(1, { ig_media_type: 'CAROUSEL' }), cfg), /Quantidade/));
+test('carrossel é ordenado e prepara vídeos e imagens', () => { const p = post(1, { ig_media_type: 'CAROUSEL', midias: [{ ordem: 2, sha256: '2'.repeat(64), url_publica: 'https://raw.githubusercontent.com/a/b/main/2.mp4' }, { ordem: 1, sha256: '1'.repeat(64), url_publica: 'https://raw.githubusercontent.com/a/b/main/1.jpg' }] }); const c = cal(1); c.lotes[0].posts = [p]; const rows = planBatches(c, [], cfg, now); const s = selectPost(rows, { ...cfg, data_forcada: rows[0].data, slot_forcado: rows[0].slot }, now); assert.equal(s.carrossel[0].image_url.endsWith('1.jpg'), true); assert.equal(s.carrossel[1].media_type, 'VIDEO'); });
+test('data_forcada e slot_forcado selecionam a peça sem publicar', () => { const r = planBatches(cal(21), [], cfg, now); const p = selectPost(r, { ...cfg, data_forcada: '2026-10-18', slot_forcado: '10:00' }, now); assert.equal(p.acao, 'simular'); assert.equal(p.container_params.media_type, 'REELS'); assert.equal(p.container_params.share_to_feed, true); });
+test('sem peça e fora do horário não publicam', () => { assert.equal(selectPost([], cfg, now).acao, 'nada'); assert.equal(selectPost([], { ...cfg, slot_forcado: '10:00' }, now).acao, 'nada'); });
+test('conflito no slot bloqueia publicação', () => { const r = planBatches(cal(1), [], cfg, now); assert.equal(selectPost([r[0], r[0]], { ...cfg, data_forcada: r[0].data, slot_forcado: r[0].slot }, now).acao, 'pular'); });
+test('conta divergente bloqueia lote', () => assert.throws(() => planBatches({ ...cal(1), account: 'outra-conta' }, [], cfg, now), /outra conta/));
+test('URLs recusam hosts desconhecidos, tokens e HTTP', () => { for (const url_publica of ['http://raw.githubusercontent.com/a.mp4', 'https://evil.invalid/a.mp4', 'https://raw.githubusercontent.com/a.mp4?token=segredo']) assert.throws(() => mediaUrl({ url_publica }, cfg)); });
+test('apenas a reserva mais antiga pode publicar sob concorrência', () => { const rows = [{ id: 4, resultado: 'reservado', execution_id: 'A' }, { id: 5, resultado: 'reservado', execution_id: 'B' }]; assert.equal(ownsClaim(rows, 4, 'A'), true); assert.equal(ownsClaim(rows, 5, 'B'), false); assert.equal(ownsClaim(rows, 4, 'B'), false); });
+test('processamento limita tentativas e rejeita estados finais inesperados', () => { assert.equal(containerState('IN_PROGRESS', 15), 'aguardar'); assert.equal(containerState('IN_PROGRESS', 16), 'erro'); assert.equal(containerState('FINISHED', 0), 'publicar'); for (const s of ['PUBLISHED', 'EXPIRED', 'ERROR', 'UNKNOWN']) assert.equal(containerState(s, 0), 'erro'); });
+test('horário de Brasília atravessa meia-noite UTC corretamente', () => assert.deepEqual(localNow(new Date('2026-10-18T01:00:00Z')), { data: '2026-10-17', slot: '22:00' }));
+test('mídia HTTP 404 ou HTML é bloqueada antes da API Meta', () => { assert.throws(() => validateMediaResponses([{ statusCode: 404 }], 1), /indisponível/); assert.throws(() => validateMediaResponses([{ statusCode: 200, headers: { 'content-type': 'text/html' } }], 1), /Servidor/); assert.equal(validateMediaResponses([{ statusCode: 200, headers: { 'content-type': 'video/mp4' } }], 1), true); });

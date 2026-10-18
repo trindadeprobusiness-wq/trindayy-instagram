@@ -1,0 +1,3178 @@
+{
+  "id": "bg5S4mztf93XANwM",
+  "name": "Instagram · Publicador Trindayy",
+  "active": false,
+  "versionId": "54fd4ad6-ea10-4228-8e64-1b06b05224b6",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "87af80cb-4dd8-4e44-8f9c-f7be74598282",
+      "name": "Teste manual sem publicação",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            },
+            {
+              "triggerAtHour": 12
+            },
+            {
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "id": "5223a453-874d-40aa-a757-d9f65a65e6eb",
+      "name": "10h · 12h · 18h (Brasília)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        288,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{\"empresa\":\"Trindayy\",\"instagram\":\"trindayy\",\"ig_user_id\":\"\",\"instagram_api_version\":\"v24.0\",\"instagram_auth\":\"instagram_login\",\"instagram_credential\":{\"id\":\"ulnMSHSbRKQBLRKC\",\"name\":\"Header Auth account\"},\"timezone\":\"America/Sao_Paulo\",\"slots\":[\"10:00\",\"12:00\",\"18:00\"],\"dias_por_lote\":7,\"modo_teste\":true,\"publicacao_autorizada\":false,\"notificacoes_ativas\":false,\"email_alerta\":\"trindadeprobusiness@gmail.com\",\"repository\":\"trindadeprobusiness-wq/trindayy-instagram\",\"content_branch\":\"codex/conteudo-instagram\",\"json_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram/conteudos.json\",\"midia_base_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram\",\"media_hosts\":[\"raw.githubusercontent.com\",\"cdn.jsdelivr.net\"],\"data_forcada\":\"\",\"slot_forcado\":\"\",\"tabela_fila\":\"tdyQa5PC5YGhLt7P\",\"tabela_historico\":\"siY3iPdRKYx57qgE\"}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "9c5f96b3-c5e0-491e-9afe-0c3b7f91ef1f",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "tdyQa5PC5YGhLt7P",
+          "cachedResultName": "trindayy_fila"
+        },
+        "returnAll": true
+      },
+      "id": "ec13b58d-443c-46f0-9403-d976f87c3656",
+      "name": "Ler fila Trindayy",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        848,
+        0
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst rows=$input.all().map(i=>i.json).filter(r=>r.peca_id); return [{json:selectPost(rows,$(\"Config\").first().json)}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "d43d785a-cd0a-47c1-bb80-295b72bb4f75",
+      "name": "Escolher peça do slot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ ({publicar:0,simular:1,pular:2,nada:3})[$json.acao] ?? 2 }}"
+      },
+      "id": "0c0ed681-9477-4268-a35c-01808029c92d",
+      "name": "O que fazer?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "simulado",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ JSON.stringify({container_params:$(\"Escolher peça do slot\").first().json.container_params,carrossel:$(\"Escolher peça do slot\").first().json.carrossel}) }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "711e2ced-7dfb-49c0-bb13-8f1c5a548f6e",
+      "name": "Registrar simulação",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "bloqueado",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fe2e4403-1983-45e3-bbf3-e503c8c4dfbc",
+      "name": "Registrar bloqueio",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "sem_peca",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7eb47caf-0778-401c-94b2-dbeaf3e3b08a",
+      "name": "Registrar horário sem peça",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        288,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c=$(\"Config\").first().json; if(c.modo_teste!==false || c.publicacao_autorizada!==true || !/^\\d{5,30}$/.test(c.ig_user_id || \"\")) throw new Error(\"Trindayy: produção bloqueada; conectar conta correta e obter autorização antes de ativar.\"); if(c.data_forcada || c.slot_forcado || $execution.mode!==\"production\") throw new Error(\"Publicação real exige execução de produção sem data/slot forçados.\"); return $input.all();",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "8d59c4f8-e06d-40b0-a1f7-352fdbd5c4ee",
+      "name": "Validar autorização de produção",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nvalidateInstagramIdentity($input.first().json,$(\"Config\").first().json); return $(\"Escolher peça do slot\").all();",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "ad86a727-e983-4715-84e4-e3eb74b9945e",
+      "name": "Confirmar conta @Trindayy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "reservado",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2562af17-d680-4c9a-85fd-7b4163ffdb45",
+      "name": "Reservar peça antes da API",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1408,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "peca_id",
+              "keyValue": "={{ $(\"Escolher peça do slot\").first().json.peca_id }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "id": "772d9fbf-25ef-4d0f-8b53-b11ab9a87f90",
+      "name": "Ler reservas desta peça",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst claim=$(\"Reservar peça antes da API\").first().json;const rows=$input.all().map(i=>i.json);if(!ownsClaim(rows,claim.id,String($execution.id))) return [];return $(\"Escolher peça do slot\").all();",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "899b79de-955f-4799-87de-083c785d061a",
+      "name": "Eleger única execução autorizada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $json.tipo === \"CAROUSEL\" ? 0 : 1 }}"
+      },
+      "id": "6d1c48d3-24ac-4f5b-822d-4c12b6623dc7",
+      "name": "É carrossel?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        288,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $(\"Escolher peça do slot\").first().json.carrossel.map((params,i)=>({json:{params,ordem:i+1}}));",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "dc133439-1c79-4e0d-a08c-e347bd14212e",
+      "name": "Separar slides em ordem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d3f96bd7-0d20-462f-b66d-1c6336c6ed33",
+      "name": "Processar um slide por vez",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "if(!$input.first().json.id) throw new Error(\"Container de slide não retornou ID\"); return [{json:{creation_id:$input.first().json.id,ordem:$(\"Processar um slide por vez\").item.json.ordem,tentativas:0}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "7f92c61e-edb2-4b37-8738-0968b3537b56",
+      "name": "Container do slide criado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "6785a80c-f0a7-471d-8353-91dab7ab2108",
+      "name": "Aguardar slide",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        912
+      ],
+      "webhookId": "f37989b6-9629-45d2-a523-f053975157aa"
+    },
+    {
+      "parameters": {
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst prev=$(\"Aguardar slide\").item.json;const current=$input.first().json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "82a42179-d078-4411-bbce-2d39eec0c4e4",
+      "name": "Avaliar processamento do slide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ ({publicar:0,aguardar:1,erro:2})[$json.rota] ?? 2 }}"
+      },
+      "id": "21f636f1-c530-452e-bfec-f3fd8e5b013a",
+      "name": "Slide pronto?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        848,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{id:$input.first().json.creation_id,ordem:$input.first().json.ordem}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "63caaaf4-7cc5-49ca-9f2a-6460d5164343",
+      "name": "Slide validado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const s=$input.all().map(i=>i.json).sort((a,b)=>a.ordem-b.ordem); const p=$(\"Escolher peça do slot\").first().json; if(s.length!==p.carrossel.length || s.some(x=>!x.id)) throw new Error(\"Carrossel incompleto\");return [{json:{params:{media_type:\"CAROUSEL\",children:s.map(x=>x.id).join(\",\"),caption:p.legenda}}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "12e269e2-46d4-45b0-9bed-cbdc52c4d8a1",
+      "name": "Juntar slides validados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "if(!$input.first().json.id) throw new Error(\"Container sem ID\"); return [{json:{creation_id:$input.first().json.id,tentativas:0}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "cc514b2d-946d-4bad-b4e7-ae9c1bc7ffb0",
+      "name": "Container criado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "container_criado",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d6b39e98-180b-4a1d-ae85-fb5a37d8ac10",
+      "name": "Registrar container antes de publicar",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        288,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $(\"Container criado\").all();",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "1ed61ba9-0f89-4c45-bba1-7c621d8e9f2b",
+      "name": "Retomar container",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "id": "b41a89d3-20e9-4398-8b35-88e88c622392",
+      "name": "Aguardar processamento",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        848,
+        1200
+      ],
+      "webhookId": "34c5c4ba-e7b2-43aa-b6a7-9a85e562ed3b"
+    },
+    {
+      "parameters": {
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst prev=$(\"Aguardar processamento\").item.json;const current=$input.first().json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "9949e18c-438a-4f15-a0d7-5a86d5d1ad0d",
+      "name": "Avaliar processamento do container",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 3,
+        "output": "={{ ({publicar:0,aguardar:1,erro:2})[$json.rota] ?? 2 }}"
+      },
+      "id": "d8da9a15-d653-4922-8207-37659297c97e",
+      "name": "Container pronto?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1680,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "publicando",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8c5687a5-933c-41fb-98ae-a07782e09811",
+      "name": "Registrar intenção de publicação",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "if(!$input.first().json.id) throw new Error(\"Resposta ambígua de publicação; revisar manualmente, não repetir\"); return [{json:{ig_media_id:$input.first().json.id,creation_id:$(\"Container criado\").first().json.creation_id}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "7a9bbfb3-829c-44a1-8ddd-64cdf1bf5233",
+      "name": "Confirmar ID publicado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "publicado",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "25f58614-d098-49db-9a14-83b9709237ae",
+      "name": "Registrar publicado imediatamente",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        848,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$(\"Confirmar ID publicado\").first().json;return [{json:{...p,permalink:$input.first().json.permalink || \"\",motivo:$input.first().json.permalink ? \"\" : \"Post publicado; consulta do link falhou. Não republicar.\"}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "e026928b-40d7-4af2-9bea-f1697a809979",
+      "name": "Normalizar link",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "link_consultado",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "03fe8923-eaff-4d0b-a945-6a499326db61",
+      "name": "Registrar link do post",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Escolher peça do slot').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Escolher peça do slot').first().json.data || \"\" }}",
+            "slot": "={{ $('Escolher peça do slot').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Escolher peça do slot').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Escolher peça do slot').first().json.tema || \"\" }}",
+            "resultado": "erro_container",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "254a8ef5-ad7e-46d7-bf06-bab636e2d58e",
+      "name": "Registrar erro de processamento",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        1808
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b91e70a9-d82e-4153-80a0-56fc9d4715a0",
+      "name": "Se o publicador falhar",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        288,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst input=$input.first().json;return [{json:{empresa:\"Trindayy\",peca_id:\"\",data:localNow().data,slot:\"\",tipo:\"\",motivo:redact(input.execution?.error?.message || input.error?.message || \"Falha geral\"),execution_id:String(input.execution?.id || $execution.id)}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "1ed5ab2a-ebf2-4949-aa33-629b70f49be8",
+      "name": "Sanitizar erro Trindayy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Sanitizar erro Trindayy').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Sanitizar erro Trindayy').first().json.data || \"\" }}",
+            "slot": "={{ $('Sanitizar erro Trindayy').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Sanitizar erro Trindayy').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Sanitizar erro Trindayy').first().json.tema || \"\" }}",
+            "resultado": "erro_geral",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "02bd859d-74e1-4c85-a2ac-b3a610074aca",
+      "name": "Registrar falha geral",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        848,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{mensagem:\"Trindayy: revise o histórico e a execução no n8n. Nenhuma retentativa de publicação será feita automaticamente.\"}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "74693bc9-3549-4e62-81e2-2c7f0311fee0",
+      "name": "Preparar aviso",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $('Config').first().json.notificacoes_ativas === true ? 0 : 1 }}"
+      },
+      "id": "a06e8219-7637-42cd-8ff4-e9d0ef660df4",
+      "name": "Notificações habilitadas?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "trindadeprobusiness@gmail.com",
+        "subject": "[Trindayy] Publicador Instagram",
+        "emailType": "text",
+        "message": "={{ $json.mensagem }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "14c514ac-670d-4db8-9952-362c97ab0a88",
+      "name": "E-mail Trindayy",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        1808
+      ],
+      "webhookId": "d28ab0ad-b724-4217-b32c-6678854d1930",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "J66yXFCEYegKJdhk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{mensagem:\"Trindayy: falha no publicador. Consulte a execução e o histórico antes de tentar novamente.\"}}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "8c790cf8-5d22-4423-abc9-7f8deeac0228",
+      "name": "Preparar aviso de falha geral",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ 1 }}"
+      },
+      "id": "8dc655cd-2bbe-4df5-acaf-0428ee1bfad2",
+      "name": "Notificações de falha habilitadas?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "trindadeprobusiness@gmail.com",
+        "subject": "[Trindayy] Falha no publicador",
+        "emailType": "text",
+        "message": "={{ $json.mensagem }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b15015cc-7801-4a17-8317-acb2c5884d61",
+      "name": "E-mail falha geral Trindayy",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        1808
+      ],
+      "webhookId": "81d0b805-2046-40b6-b337-3b35ef4f7254",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "J66yXFCEYegKJdhk",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "id": "dedc69a5-4dd2-4b71-be66-0ab9c64db6cf",
+      "name": "Separar mídias para conferir",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $(\"Escolher peça do slot\").first().json.urls.map(url=>({json:{url}}));"
+      }
+    },
+    {
+      "id": "33122d43-f802-49b8-b8ea-d9f5413c8f8a",
+      "name": "Conferir mídia pública",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        300
+      ],
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "2182668d-c2fa-4aa3-8f21-9b8c3863e734",
+      "name": "Confirmar todas as mídias",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        600
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nvalidateMediaResponses($input.all().map(i=>i.json),$(\"Escolher peça do slot\").first().json.urls.length); return $(\"Escolher peça do slot\").all();"
+      }
+    },
+    {
+      "id": "896cd759-9c35-4fd9-a11a-f34590d3aa8f",
+      "name": "Consultar identidade Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        848,
+        304
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.instagram.com/v24.0/me",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"user_id,username\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "85747020-ae83-4bf2-b046-aad3e2422e83",
+      "name": "Criar mídia Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        608
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Escolher peça do slot\").first().json.container_params) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "c2504dcb-1501-4403-afa4-be8567d944c7",
+      "name": "Criar slide Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1408,
+        608
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.params) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "8aae94ff-a887-4a3b-9ed0-c3b4811163e6",
+      "name": "Status do slide Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        288,
+        912
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($json.creation_id) + \"\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"status_code,status\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "a1bab32f-44ef-4c09-9d25-1109e02b8d0e",
+      "name": "Criar carrossel Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        912
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.params) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "fc8fd129-2c2d-4871-b9c8-301fa8500690",
+      "name": "Status do container Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        1200
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($json.creation_id) + \"\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"status_code,status\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "42e5cc70-bec5-4550-aa4b-60876f9c6200",
+      "name": "Publicar via Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        288,
+        1504
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media_publish\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({creation_id:$(\"Container criado\").first().json.creation_id}) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "319e3fa2-f8b1-4ff9-93bb-657f4bfd2038",
+      "name": "Consultar link Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        1504
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Confirmar ID publicado\").first().json.ig_media_id) + \"\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"id,permalink\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Teste manual sem publicação": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10h · 12h · 18h (Brasília)": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Ler fila Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler fila Trindayy": {
+      "main": [
+        [
+          {
+            "node": "Escolher peça do slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escolher peça do slot": {
+      "main": [
+        [
+          {
+            "node": "O que fazer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "O que fazer?": {
+      "main": [
+        [
+          {
+            "node": "Validar autorização de produção",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar simulação",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar bloqueio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar horário sem peça",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar bloqueio": {
+      "main": [
+        [
+          {
+            "node": "Preparar aviso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reservar peça antes da API": {
+      "main": [
+        [
+          {
+            "node": "Ler reservas desta peça",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler reservas desta peça": {
+      "main": [
+        [
+          {
+            "node": "Eleger única execução autorizada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eleger única execução autorizada": {
+      "main": [
+        [
+          {
+            "node": "É carrossel?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É carrossel?": {
+      "main": [
+        [
+          {
+            "node": "Separar slides em ordem",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Criar mídia Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar slides em ordem": {
+      "main": [
+        [
+          {
+            "node": "Processar um slide por vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar um slide por vez": {
+      "main": [
+        [
+          {
+            "node": "Juntar slides validados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Criar slide Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Container do slide criado": {
+      "main": [
+        [
+          {
+            "node": "Aguardar slide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avaliar processamento do slide": {
+      "main": [
+        [
+          {
+            "node": "Slide pronto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slide pronto?": {
+      "main": [
+        [
+          {
+            "node": "Slide validado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar slide",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar erro de processamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slide validado": {
+      "main": [
+        [
+          {
+            "node": "Processar um slide por vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Container criado": {
+      "main": [
+        [
+          {
+            "node": "Registrar container antes de publicar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar container antes de publicar": {
+      "main": [
+        [
+          {
+            "node": "Retomar container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retomar container": {
+      "main": [
+        [
+          {
+            "node": "Aguardar processamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Avaliar processamento do container": {
+      "main": [
+        [
+          {
+            "node": "Container pronto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Container pronto?": {
+      "main": [
+        [
+          {
+            "node": "Registrar intenção de publicação",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aguardar processamento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Registrar erro de processamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar ID publicado": {
+      "main": [
+        [
+          {
+            "node": "Registrar publicado imediatamente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar link": {
+      "main": [
+        [
+          {
+            "node": "Registrar link do post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar erro de processamento": {
+      "main": [
+        [
+          {
+            "node": "Preparar aviso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se o publicador falhar": {
+      "main": [
+        [
+          {
+            "node": "Sanitizar erro Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitizar erro Trindayy": {
+      "main": [
+        [
+          {
+            "node": "Registrar falha geral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar aviso": {
+      "main": [
+        [
+          {
+            "node": "Notificações habilitadas?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificações habilitadas?": {
+      "main": [
+        [
+          {
+            "node": "E-mail Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar falha geral": {
+      "main": [
+        [
+          {
+            "node": "Preparar aviso de falha geral",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar aviso de falha geral": {
+      "main": [
+        [
+          {
+            "node": "Notificações de falha habilitadas?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificações de falha habilitadas?": {
+      "main": [
+        [
+          {
+            "node": "E-mail falha geral Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar conta @Trindayy": {
+      "main": [
+        [
+          {
+            "node": "Separar mídias para conferir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separar mídias para conferir": {
+      "main": [
+        [
+          {
+            "node": "Conferir mídia pública",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferir mídia pública": {
+      "main": [
+        [
+          {
+            "node": "Confirmar todas as mídias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar todas as mídias": {
+      "main": [
+        [
+          {
+            "node": "Reservar peça antes da API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar autorização de produção": {
+      "main": [
+        [
+          {
+            "node": "Consultar identidade Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar identidade Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Confirmar conta @Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar mídia Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Container criado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar slide Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Container do slide criado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar slide": {
+      "main": [
+        [
+          {
+            "node": "Status do slide Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status do slide Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Avaliar processamento do slide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar slides validados": {
+      "main": [
+        [
+          {
+            "node": "Criar carrossel Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar carrossel Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Container criado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar processamento": {
+      "main": [
+        [
+          {
+            "node": "Status do container Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status do container Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Avaliar processamento do container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar intenção de publicação": {
+      "main": [
+        [
+          {
+            "node": "Publicar via Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publicar via Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Confirmar ID publicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar publicado imediatamente": {
+      "main": [
+        [
+          {
+            "node": "Consultar link Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar link Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Normalizar link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "America/Sao_Paulo",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300,
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [
+    {
+      "id": "8a45342e-9e4f-4c66-9342-a0d4c2e32461",
+      "name": "Publicador Trindayy",
+      "nodeNames": [
+        "Config",
+        "Ler fila Trindayy",
+        "Escolher peça do slot",
+        "O que fazer?",
+        "Registrar simulação",
+        "Registrar bloqueio",
+        "Registrar horário sem peça",
+        "Validar autorização de produção",
+        "Consultar identidade Instagram Login",
+        "Confirmar conta @Trindayy",
+        "Reservar peça antes da API",
+        "Ler reservas desta peça",
+        "Eleger única execução autorizada",
+        "É carrossel?",
+        "Criar mídia Instagram Login",
+        "Separar slides em ordem",
+        "Processar um slide por vez",
+        "Criar slide Instagram Login",
+        "Container do slide criado",
+        "Aguardar slide",
+        "Status do slide Instagram Login",
+        "Avaliar processamento do slide",
+        "Slide pronto?",
+        "Slide validado",
+        "Juntar slides validados",
+        "Criar carrossel Instagram Login",
+        "Container criado",
+        "Registrar container antes de publicar",
+        "Retomar container",
+        "Aguardar processamento",
+        "Status do container Instagram Login",
+        "Avaliar processamento do container",
+        "Container pronto?",
+        "Registrar intenção de publicação",
+        "Publicar via Instagram Login",
+        "Confirmar ID publicado",
+        "Registrar publicado imediatamente",
+        "Consultar link Instagram Login",
+        "Normalizar link",
+        "Registrar link do post",
+        "Registrar erro de processamento",
+        "Preparar aviso",
+        "Notificações habilitadas?",
+        "E-mail Trindayy",
+        "Separar mídias para conferir",
+        "Conferir mídia pública",
+        "Confirmar todas as mídias"
+      ],
+      "description": "Seleciona conteúdo aprovado, confere a conta e publica com reserva durável e auditoria."
+    },
+    {
+      "id": "2a9808db-280d-4201-bcb1-726958fe49c3",
+      "name": "Falha geral e alerta",
+      "nodeNames": [
+        "Sanitizar erro Trindayy",
+        "Registrar falha geral",
+        "Preparar aviso de falha geral",
+        "Notificações de falha habilitadas?",
+        "E-mail falha geral Trindayy"
+      ],
+      "description": "Sanitiza a falha e registra antes de avisar; notificações desabilitadas até validação."
+    }
+  ]
+}

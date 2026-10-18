@@ -1,0 +1,422 @@
+{
+  "id": "MpnaDpZIM0HvbgYH",
+  "name": "Instagram · Programação diária Trindayy",
+  "active": false,
+  "versionId": "a8ad1b5d-688b-465e-9935-3625caed46e3",
+  "nodes": [
+    {
+      "id": "71a9ec1c-490c-483c-a9a5-bf851ae7b95b",
+      "name": "Conferir programação manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "77934107-08db-446b-82ba-eb3076568f4c",
+      "name": "Resumo diário às 9h30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        280,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 9,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d61628e9-2a35-4d75-9036-b96dc9351a9b",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{\"empresa\":\"Trindayy\",\"instagram\":\"trindayy\",\"ig_user_id\":\"\",\"instagram_api_version\":\"v24.0\",\"instagram_auth\":\"instagram_login\",\"instagram_credential\":{\"id\":\"ulnMSHSbRKQBLRKC\",\"name\":\"Header Auth account\"},\"timezone\":\"America/Sao_Paulo\",\"slots\":[\"10:00\",\"12:00\",\"18:00\"],\"dias_por_lote\":7,\"modo_teste\":true,\"publicacao_autorizada\":false,\"notificacoes_ativas\":false,\"email_alerta\":\"trindadeprobusiness@gmail.com\",\"repository\":\"trindadeprobusiness-wq/trindayy-instagram\",\"content_branch\":\"codex/conteudo-instagram\",\"json_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram/conteudos.json\",\"midia_base_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram\",\"media_hosts\":[\"raw.githubusercontent.com\",\"cdn.jsdelivr.net\"],\"data_forcada\":\"\",\"slot_forcado\":\"\",\"tabela_fila\":\"tdyQa5PC5YGhLt7P\",\"tabela_historico\":\"siY3iPdRKYx57qgE\"}}];"
+      }
+    },
+    {
+      "id": "624f1568-d8bc-4f79-9590-fba93f1e20ad",
+      "name": "Ler programação",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        840,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "tdyQa5PC5YGhLt7P",
+          "cachedResultName": "trindayy_fila"
+        },
+        "returnAll": true
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "5af8f71f-ff04-41b6-a8e0-c23ef64e14fb",
+      "name": "Resumo do dia Trindayy",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst data=localNow().data;const rows=$input.all().map(i=>i.json).filter(r=>r.data===data);return [{json:{data,slot:\"09:30\",peca_id:\"\",tipo:\"\",mensagem:\"Trindayy — programação de \"+data+\"\\n\"+(rows.length?rows.map(r=>r.slot+\" · \"+r.peca_id+\" · \"+r.estado).join(\"\\n\"):\"Nenhuma peça programada. Envie um novo lote.\"),motivo:\"Resumo diário preparado\"}}];"
+      }
+    },
+    {
+      "id": "8f596bf3-10f1-42e5-9d04-dcd171e9ac52",
+      "name": "Registrar programação diária",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        0
+      ],
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "siY3iPdRKYx57qgE",
+          "cachedResultName": "trindayy_publicacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "empresa": "Trindayy",
+            "peca_id": "={{ $('Resumo do dia Trindayy').first().json.peca_id || \"\" }}",
+            "data": "={{ $('Resumo do dia Trindayy').first().json.data || \"\" }}",
+            "slot": "={{ $('Resumo do dia Trindayy').first().json.slot || \"\" }}",
+            "ig_media_type": "={{ $('Resumo do dia Trindayy').first().json.tipo || \"\" }}",
+            "tema": "={{ $('Resumo do dia Trindayy').first().json.tema || \"\" }}",
+            "resultado": "programacao_diaria",
+            "creation_id": "={{ $json.creation_id || \"\" }}",
+            "ig_media_id": "={{ $json.ig_media_id || \"\" }}",
+            "permalink": "={{ $json.permalink || \"\" }}",
+            "detalhe": "={{ $json.motivo || \"\" }}",
+            "executado_em": "={{ $now.toISO() }}",
+            "execution_id": "={{ $execution.id }}"
+          },
+          "schema": [
+            {
+              "id": "empresa",
+              "displayName": "empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "peca_id",
+              "displayName": "peca_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "slot",
+              "displayName": "slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_type",
+              "displayName": "ig_media_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tema",
+              "displayName": "tema",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "creation_id",
+              "displayName": "creation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ig_media_id",
+              "displayName": "ig_media_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "permalink",
+              "displayName": "permalink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "detalhe",
+              "displayName": "detalhe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "executado_em",
+              "displayName": "executado_em",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cc69c40a-f124-4d1e-85ad-d1bdfd736185",
+      "name": "Retomar resumo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $(\"Resumo do dia Trindayy\").all();"
+      }
+    },
+    {
+      "id": "766aebb7-d1c6-4511-841a-698b8161cd17",
+      "name": "Notificações habilitadas?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $('Config').first().json.notificacoes_ativas === true ? 0 : 1 }}"
+      }
+    },
+    {
+      "id": "f8fefb9e-bf39-419f-81cd-ed7186bd039d",
+      "name": "E-mail Trindayy",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        280,
+        300
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "trindadeprobusiness@gmail.com",
+        "subject": "[Trindayy] Publicador Instagram",
+        "emailType": "text",
+        "message": "={{ $json.mensagem }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "onError": "continueRegularOutput",
+      "webhookId": "21f1cec7-ca5c-4942-8d96-1b6bf99eec3d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "J66yXFCEYegKJdhk",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Conferir programação manualmente": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo diário às 9h30": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Ler programação",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ler programação": {
+      "main": [
+        [
+          {
+            "node": "Resumo do dia Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumo do dia Trindayy": {
+      "main": [
+        [
+          {
+            "node": "Registrar programação diária",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar programação diária": {
+      "main": [
+        [
+          {
+            "node": "Retomar resumo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retomar resumo": {
+      "main": [
+        [
+          {
+            "node": "Notificações habilitadas?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificações habilitadas?": {
+      "main": [
+        [
+          {
+            "node": "E-mail Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "America/Sao_Paulo",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "executionTimeout": 300
+  },
+  "nodeGroups": [
+    {
+      "id": "58719635-d966-4b00-919d-87ae96f79319",
+      "name": "Programação diária",
+      "nodeNames": [
+        "Config",
+        "Ler programação",
+        "Resumo do dia Trindayy",
+        "Registrar programação diária",
+        "Retomar resumo",
+        "Notificações habilitadas?",
+        "E-mail Trindayy"
+      ],
+      "description": "Etapas do programacao Trindayy. Modo de teste e notificações desligadas até homologação."
+    }
+  ]
+}

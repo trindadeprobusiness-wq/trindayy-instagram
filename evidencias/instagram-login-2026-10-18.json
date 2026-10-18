@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-18",
+  "timezone": "America/Sao_Paulo",
+  "localTests": {
+    "passed": 35,
+    "failed": 0,
+    "command": "node --test tests/*.test.mjs"
+  },
+  "workflows": [
+    {
+      "file": "entrada",
+      "id": "zwfHKRhNGQCkw4R0",
+      "active": false,
+      "versionId": "da352c67-3271-4d3a-aed0-c713352b765c",
+      "nodes": 12
+    },
+    {
+      "file": "publicador",
+      "id": "bg5S4mztf93XANwM",
+      "active": false,
+      "versionId": "54fd4ad6-ea10-4228-8e64-1b06b05224b6",
+      "nodes": 55
+    },
+    {
+      "file": "programacao",
+      "id": "MpnaDpZIM0HvbgYH",
+      "active": false,
+      "versionId": "a8ad1b5d-688b-465e-9935-3625caed46e3",
+      "nodes": 9
+    },
+    {
+      "file": "verificar-conexao",
+      "id": "HdybZ75WJco4q4bE",
+      "active": false,
+      "versionId": "a61fee5f-d926-4a89-b670-9d227edbbc72",
+      "nodes": 3
+    }
+  ],
+  "sdkValidations": {
+    "entrada": true,
+    "publicador": true,
+    "programacao": true
+  },
+  "originalUnchanged": true,
+  "originalVersionId": "4b1a802a-a2a4-4ff5-8620-b7ee16c14077",
+  "originalActive": true,
+  "appCreated": true,
+  "metaAppId": "1611956463109278",
+  "instagramAppId": "1305433924981111",
+  "instagramUserIdObservedInMeta": "17841479648607267",
+  "permissionsReadyForTesting": ["instagram_business_basic", "instagram_business_content_publish"],
+  "publishingPermissionEnabledWithUserApproval": true,
+  "authMode": "instagram_login",
+  "apiHost": "graph.instagram.com",
+  "apiVersion": "v24.0",
+  "credentialReference": {
+    "id": "ulnMSHSbRKQBLRKC",
+    "name": "Header Auth account",
+    "type": "httpHeaderAuth"
+  },
+  "identityVerified": false,
+  "igUserIdConfigured": false,
+  "realPublicationTested": false,
+  "notificationsSent": false,
+  "apiWritesExecuted": false,
+  "executions": [
+    {
+      "id": "61",
+      "check": "Cabecalho Name invalido; corrigido no n8n",
+      "success": false
+    },
+    {
+      "id": "62",
+      "check": "Consulta real de identidade",
+      "transportExecuted": true,
+      "identityVerified": false,
+      "httpStatus": 400,
+      "metaErrorCode": 190
+    },
+    {
+      "id": "63",
+      "check": "Simulacao Reel apos migracao, servicos e tabelas fixados",
+      "success": true,
+      "apiExecuted": false
+    },
+    {
+      "id": "64",
+      "check": "Producao bloqueada antes da Meta",
+      "expectedFailure": true,
+      "lastNode": "Validar autorização de produção"
+    },
+    {
+      "id": "65",
+      "check": "Consulta repetida apos confirmacao do usuario",
+      "identityVerified": false,
+      "httpStatus": 400,
+      "metaErrorCode": 190
+    },
+    {
+      "id": "66",
+      "check": "Consulta repetida apos novo token informado como salvo pelo usuario",
+      "identityVerified": false,
+      "httpStatus": 400,
+      "metaErrorCode": 190
+    },
+    {
+      "id": "67",
+      "check": "Nova conferencia solicitada pelo usuario; mesma credencial Header Auth account",
+      "identityVerified": false,
+      "httpStatus": 400,
+      "metaErrorCode": 190
+    }
+  ],
+  "pending": [
+    "Token aceito pela API Instagram",
+    "Conferencia de user_id e username",
+    "Permissao e limite de publicacao",
+    "Midia real e autorizacao de homologacao",
+    "Ativacao autorizada apos teste real"
+  ]
+}
