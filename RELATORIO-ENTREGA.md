@@ -61,7 +61,7 @@ Os três códigos SDK foram validados no n8n, sem erros ou avisos na rodada fina
 | 58 | Simulação final do publicador com fila de teste fixada; sucesso |
 | 59 | Falha esperada: tentativa sem autorização/ID foi bloqueada antes da API Meta |
 | 61 | Diagnóstico detectou Name do cabeçalho preenchido com o nome da conta; corrigido para Authorization no n8n |
-| 62, 65, 66 | GET real na API Instagram retornou HTTP 400 / código 190, token inválido; conexão não validada mesmo após o usuário informar a substituição do token |
+| 62, 65, 66, 67 | GET real na API Instagram retornou HTTP 400 / código 190, token inválido; conexão não validada mesmo após o usuário informar a substituição do token |
 | 63 | Simulação após migração passou, com serviços externos e Data Tables fixados; sem API ou escrita de fila |
 | 64 | Bloqueio de produção funcionou antes de qualquer operação Meta |
 
@@ -72,6 +72,8 @@ As aprovações em fixtures são dados sintéticos de teste e não aprovam conte
 ## I. Pendências
 
 O app existente **Trindayy** foi confirmado no painel Meta: App ID `1611956463109278`; Instagram App ID `1305433924981111`. O convite de testador foi aceito pelo proprietário. Esses avanços não comprovam autenticação API. A credencial permanece no n8n e precisa de um token aceito pela consulta de identidade.
+
+No painel Meta, a conta @trindayy aparece com ID `17841479648607267`. A permissão `instagram_business_basic` já estava pronta para teste. `instagram_business_content_publish` ainda estava ausente (a permissão Facebook `instagram_content_publish` estava configurada); após autorização explícita do Gabriel, a permissão correta foi habilitada e sua persistência confirmada como **Pronto para teste**. Token anterior não foi apresentado como válido; a função de publicação ainda precisa ser autorizada pela conta e conferida em um token aceito. O ID visual não foi usado para declarar autenticação API concluída.
 
 Depois, é necessário obter o acesso API da conta profissional @trindayy e preencher a credencial exclusivamente no n8n; conferir o ID Instagram retornado pela API; fornecer uma peça real aprovada; autorizar seu teste real e, após validação, a ativação da rotina. Notificações exigem teste autorizado de envio.
 

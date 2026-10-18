@@ -76,6 +76,8 @@ Contas verificadas durante a configuração:
 
 Foi confirmado no navegador o app **Trindayy**, Meta App ID `1611956463109278`, Instagram App ID `1305433924981111`, com o caso de uso Instagram. Gabriel aceitou o convite de testador do Instagram. O publicador usa **Instagram Login direto**: oito operações HTTP em `https://graph.instagram.com/v24.0`, com a credencial Header Auth exclusiva. A consulta de identidade é `GET /me?fields=user_id,username`; criação de mídia e publicação usam corpo JSON e não repetem POST automaticamente. A [documentação oficial de publicação](https://developers.facebook.com/documentation/instagram-platform/content-publishing) descreve o host e as permissões desse login.
 
+O painel Meta lista @trindayy com ID `17841479648607267`. `instagram_business_basic` já estava pronta para teste; `instagram_business_content_publish` foi adicionada com autorização explícita do Gabriel e confirmada como pronta para teste. Essa configuração não confirma as permissões contidas no token salvo nem resolve o erro 190 por si só. Gere e autorize um token atualizado antes de repetir a consulta. O ID observado no painel ainda não foi confirmado pela API.
+
 Para concluir a conexão e homologar:
 
 1. No caso de uso Instagram do app Trindayy, configure `instagram_business_basic` e `instagram_business_content_publish`. Aceitar a função de testador não comprova que o token possui essas permissões.
