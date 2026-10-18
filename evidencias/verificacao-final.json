@@ -1,0 +1,110 @@
+{
+  "date": "2026-10-17",
+  "timezone": "America/Sao_Paulo",
+  "localTests": {
+    "passed": 31,
+    "failed": 0,
+    "command": "node --test tests/*.test.mjs"
+  },
+  "workflows": [
+    {
+      "file": "entrada",
+      "id": "zwfHKRhNGQCkw4R0",
+      "name": "Instagram · Entrada de lotes Trindayy",
+      "active": false,
+      "nodes": 12,
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "timezone": "America/Sao_Paulo",
+        "saveExecutionProgress": true,
+        "saveManualExecutions": true,
+        "saveDataErrorExecution": "all",
+        "saveDataSuccessExecution": "all",
+        "executionTimeout": 300
+      }
+    },
+    {
+      "file": "publicador",
+      "id": "bg5S4mztf93XANwM",
+      "name": "Instagram · Publicador Trindayy",
+      "active": false,
+      "nodes": 55,
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "timezone": "America/Sao_Paulo",
+        "saveExecutionProgress": true,
+        "saveManualExecutions": true,
+        "saveDataErrorExecution": "all",
+        "saveDataSuccessExecution": "all",
+        "executionTimeout": 300,
+        "binaryMode": "separate"
+      }
+    },
+    {
+      "file": "programacao",
+      "id": "MpnaDpZIM0HvbgYH",
+      "name": "Instagram · Programação diária Trindayy",
+      "active": false,
+      "nodes": 9,
+      "settings": {
+        "executionOrder": "v1",
+        "availableInMCP": true,
+        "timezone": "America/Sao_Paulo",
+        "saveExecutionProgress": true,
+        "saveManualExecutions": true,
+        "saveDataErrorExecution": "all",
+        "saveDataSuccessExecution": "all",
+        "executionTimeout": 300
+      }
+    }
+  ],
+  "sdkValidations": {
+    "entrada": true,
+    "publicador": true,
+    "programacao": true
+  },
+  "originalUnchanged": true,
+  "realPublicationTested": false,
+  "notificationsSent": false,
+  "appCreated": false,
+  "fixturesQuarantined": true,
+  "executions": [
+    {
+      "id": "51",
+      "check": "lote ficticio gravado",
+      "success": true
+    },
+    {
+      "id": "53",
+      "check": "reimportacao sem duplicidade",
+      "success": true
+    },
+    {
+      "id": "54",
+      "check": "simulacao de Reel",
+      "success": true
+    },
+    {
+      "id": "56",
+      "check": "fixture fora da fila produtiva",
+      "success": true
+    },
+    {
+      "id": "57",
+      "check": "GitHub para n8n",
+      "success": true
+    },
+    {
+      "id": "58",
+      "check": "simulacao final",
+      "success": true
+    },
+    {
+      "id": "59",
+      "check": "bloqueio antes da Meta",
+      "expectedFailure": true
+    }
+  ]
+}

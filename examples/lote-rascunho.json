@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "account": "trindayy",
+  "timezone": "America/Sao_Paulo",
+  "lotes": [{
+    "id": "lote-exemplo",
+    "posts": [{
+      "id": "exemplo-nao-publicar",
+      "versao": "v1",
+      "tipo": "FEED",
+      "ig_media_type": "REELS",
+      "tema": "Substituir pelo título do seu vídeo",
+      "legenda": "Escreva sua legenda aqui.",
+      "status": "rascunho",
+      "midias": [{
+        "ordem": 1,
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "caminho_post": "midias/substituir-pelo-sha256-do-arquivo.mp4"
+      }]
+    }]
+  }]
+}
