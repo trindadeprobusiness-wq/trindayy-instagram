@@ -2,7 +2,7 @@
 
 Você cria os vídeos e as imagens. Esta automação recebe os lotes aprovados, distribui o conteúdo pela semana e prepara a publicação no **@trindayy**, sem Stories e sem geração de conteúdo.
 
-**Estado em 18/10/2026:** aplicativo Trindayy existente; publicador adaptado ao Instagram Login direto, com 35 testes locais aprovados e simulação no n8n. Os três workflows continuam **inativos**. A consulta real de identidade ainda retorna erro 190 (`Invalid OAuth 2.0 Access Token`); aguarda correção do token no n8n. Não houve publicação real.
+**Estado em 18/10/2026:** aplicativo Trindayy existente; publicador adaptado ao Instagram Login direto, com 37 testes locais aprovados e simulação no n8n. Os três workflows continuam **inativos**. As consultas reais nas versões v24.0 e v26.0 retornaram erro 190 (`Invalid OAuth 2.0 Access Token`); a conexão ainda não está validada. Não houve publicação real. O diagnóstico agora termina com erro quando a Meta recusa a autenticação, em vez de exibir uma execução verde com `conectado=false`.
 
 ## Uso semanal
 

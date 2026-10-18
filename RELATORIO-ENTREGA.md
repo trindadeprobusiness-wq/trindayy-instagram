@@ -45,7 +45,7 @@ Os oito nodes de API do publicador foram migrados de Facebook Graph API para HTT
 
 ## H. Testes e evidências
 
-**35 testes locais passaram, zero falhas.** Abrangem distribuição, deduplicação, aprovação, Stories, carrosséis, URLs, reserva sob concorrência, polling, timezone, controles do painel, identificação `user_id` e autenticação por referência de credencial. Comando: `node --test tests/*.test.mjs`.
+**37 testes locais passaram, zero falhas.** Abrangem distribuição, deduplicação, aprovação, Stories, carrosséis, URLs, reserva sob concorrência, polling, timezone, controles do painel, identificação `user_id`, autenticação por referência de credencial e diagnóstico que não aprova autenticação recusada. Comando: `node --test tests/*.test.mjs`.
 
 Os três códigos SDK foram validados no n8n, sem erros ou avisos na rodada final. Fuso, histórico de execução, agrupamentos e limite de 300s foram salvos.
 
@@ -64,8 +64,12 @@ Os três códigos SDK foram validados no n8n, sem erros ou avisos na rodada fina
 | 62, 65, 66, 67 | GET real na API Instagram retornou HTTP 400 / código 190, token inválido; conexão não validada mesmo após o usuário informar a substituição do token |
 | 63 | Simulação após migração passou, com serviços externos e Data Tables fixados; sem API ou escrita de fila |
 | 64 | Bloqueio de produção funcionou antes de qualquer operação Meta |
+| 68, 70 | Consultas reais em v24.0 e v26.0, ambas com HTTP 400 / código 190; teste de versão não resolveu autenticação |
+| 71 | Diagnóstico corrigido: falha explícita em Confirmar autenticação válida quando conectado=false; sem escritas na Meta |
 
 As aprovações em fixtures são dados sintéticos de teste e não aprovam conteúdo real. `evidencias/verificacao-final.json` contém apenas resultados resumidos, sem dados de autenticação.
+
+O diagnóstico possui agora quatro nodes. Antes da correção, o tratamento HTTP permitia a execução técnica terminar verde mesmo com `conectado=false`; o resultado não comprovava autenticação. A execução 71 falhou explicitamente com o erro 190 da Meta. `evidencias/verificacao-conexao-2026-10-18.json` registra a checagem atual. O diagnóstico foi restaurado para v24.0 após o teste de compatibilidade. Nenhuma escrita ou tentativa de publicação foi executada.
 
 **Não executados:** autenticação API @trindayy, container real, processamento de vídeo real, publicação/permalink reais, envio de e-mail e gatilhos automáticos. Carrossel lento sob o limite da instância também precisa de homologação. Esses pontos não são classificados como aprovados.
 

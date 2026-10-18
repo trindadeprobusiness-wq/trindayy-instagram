@@ -2,7 +2,7 @@
   "id": "HdybZ75WJco4q4bE",
   "name": "Trindayy · Verificar conexão Meta",
   "active": false,
-  "versionId": "a61fee5f-d926-4a89-b670-9d227edbbc72",
+  "versionId": "79bb212a-9101-47c2-9eb9-38474998ba0e",
   "nodes": [
     {
       "id": "632f817d-39ec-44e7-8ea1-0b50031c7e6b",
@@ -68,6 +68,20 @@
         "mode": "runOnceForAllItems",
         "jsCode": "const r=$input.first().json;const p=r.body||{};if(r.statusCode!==200||p.error){const e=p.error||{};return [{json:{conectado:false,http_status:r.statusCode,codigo:e.code||null,subcodigo:e.error_subcode||null,motivo:String(e.message||\"Falha na consulta\").replace(/Bearer\\s+\\S+/gi,\"Bearer [REDACTED]\").replace(/IG[A-Za-z0-9_-]{30,}/g,\"[REDACTED]\").slice(0,400)}}];}const id=String(p.user_id||\"\");if(p.username?.toLowerCase()!==\"trindayy\"||!/^\\d{5,30}$/.test(id))return [{json:{conectado:false,motivo:\"Identidade não corresponde ao @trindayy ou user_id ausente\",username:p.username||\"\",user_id:id}}];return [{json:{conectado:true,username:p.username,ig_user_id:id,http_status:r.statusCode,api:\"instagram_login\",publicacao_testada:false}}];"
       }
+    },
+    {
+      "id": "6c3ae8e5-cbb0-410d-a23c-5a1320d399b5",
+      "name": "Confirmar autenticação válida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const r=$input.first().json;if(r.conectado!==true)throw new Error(\"Instagram não autenticado: HTTP \"+(r.http_status||\"?\")+\" / código \"+(r.codigo||\"?\")+\" — \"+(r.motivo||\"Identidade não confirmada\"));return $input.all();"
+      }
     }
   ],
   "connections": {
@@ -87,6 +101,17 @@
         [
           {
             "node": "Resultado seguro da conexão",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado seguro da conexão": {
+      "main": [
+        [
+          {
+            "node": "Confirmar autenticação válida",
             "type": "main",
             "index": 0
           }

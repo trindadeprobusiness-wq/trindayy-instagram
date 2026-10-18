@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-18",
+  "timezone": "America/Sao_Paulo",
+  "credentialReference": {
+    "id": "ulnMSHSbRKQBLRKC",
+    "name": "Header Auth account",
+    "type": "httpHeaderAuth"
+  },
+  "authenticationVerified": false,
+  "identityVerified": false,
+  "permissionInTokenVerified": false,
+  "quotaVerified": false,
+  "realPublicationTested": false,
+  "apiWriteRequestsExecuted": false,
+  "tests": [
+    {
+      "executionId": "68",
+      "apiVersion": "v24.0",
+      "httpStatus": 400,
+      "metaErrorCode": 190,
+      "authenticated": false
+    },
+    {
+      "executionId": "70",
+      "apiVersion": "v26.0",
+      "httpStatus": 400,
+      "metaErrorCode": 190,
+      "authenticated": false
+    },
+    {
+      "executionId": "71",
+      "apiVersion": "v24.0",
+      "executionStatus": "error",
+      "httpStatus": 400,
+      "metaErrorCode": 190,
+      "authenticated": false
+    }
+  ],
+  "diagnosticFix": "An invalid token now fails the diagnostic workflow explicitly; technical success is no longer mistaken for authenticated access.",
+  "diagnosticNodes": 4,
+  "localTests": {
+    "passed": 37,
+    "failed": 0
+  },
+  "workflowStates": [
+    {
+      "id": "zwfHKRhNGQCkw4R0",
+      "name": "Instagram · Entrada de lotes Trindayy",
+      "active": false,
+      "versionId": "da352c67-3271-4d3a-aed0-c713352b765c"
+    },
+    {
+      "id": "bg5S4mztf93XANwM",
+      "name": "Instagram · Publicador Trindayy",
+      "active": false,
+      "versionId": "54fd4ad6-ea10-4228-8e64-1b06b05224b6"
+    },
+    {
+      "id": "MpnaDpZIM0HvbgYH",
+      "name": "Instagram · Programação diária Trindayy",
+      "active": false,
+      "versionId": "a8ad1b5d-688b-465e-9935-3625caed46e3"
+    },
+    {
+      "id": "spzIWit9TALTU4us",
+      "name": "Instagram · Publicador Carteira em Dia",
+      "active": true,
+      "versionId": "4b1a802a-a2a4-4ff5-8620-b7ee16c14077"
+    }
+  ]
+}
