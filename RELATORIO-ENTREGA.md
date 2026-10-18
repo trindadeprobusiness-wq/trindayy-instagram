@@ -61,7 +61,7 @@ Os três códigos SDK foram validados no n8n, sem erros ou avisos na rodada fina
 | 58 | Simulação final do publicador com fila de teste fixada; sucesso |
 | 59 | Falha esperada: tentativa sem autorização/ID foi bloqueada antes da API Meta |
 | 61 | Diagnóstico detectou Name do cabeçalho preenchido com o nome da conta; corrigido para Authorization no n8n |
-| 62, 65 | GET real na API Instagram retornou HTTP 400 / código 190, token inválido; conexão não validada |
+| 62, 65, 66 | GET real na API Instagram retornou HTTP 400 / código 190, token inválido; conexão não validada mesmo após o usuário informar a substituição do token |
 | 63 | Simulação após migração passou, com serviços externos e Data Tables fixados; sem API ou escrita de fila |
 | 64 | Bloqueio de produção funcionou antes de qualquer operação Meta |
 

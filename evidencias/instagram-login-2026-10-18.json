@@ -92,6 +92,13 @@
       "identityVerified": false,
       "httpStatus": 400,
       "metaErrorCode": 190
+    },
+    {
+      "id": "66",
+      "check": "Consulta repetida apos novo token informado como salvo pelo usuario",
+      "identityVerified": false,
+      "httpStatus": 400,
+      "metaErrorCode": 190
     }
   ],
   "pending": [
