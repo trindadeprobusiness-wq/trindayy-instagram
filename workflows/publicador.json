@@ -1,7 +1,8 @@
 {
-  "name": "Instagram · Publicador Trindayy",
   "id": "bg5S4mztf93XANwM",
+  "name": "Instagram · Publicador Trindayy",
   "active": false,
+  "versionId": "54fd4ad6-ea10-4228-8e64-1b06b05224b6",
   "nodes": [
     {
       "parameters": {},
@@ -41,7 +42,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{json:{\"empresa\":\"Trindayy\",\"instagram\":\"trindayy\",\"ig_user_id\":\"\",\"timezone\":\"America/Sao_Paulo\",\"slots\":[\"10:00\",\"12:00\",\"18:00\"],\"dias_por_lote\":7,\"modo_teste\":true,\"publicacao_autorizada\":false,\"notificacoes_ativas\":false,\"email_alerta\":\"trindadeprobusiness@gmail.com\",\"repository\":\"trindadeprobusiness-wq/trindayy-instagram\",\"content_branch\":\"codex/conteudo-instagram\",\"json_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram/conteudos.json\",\"midia_base_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram\",\"media_hosts\":[\"raw.githubusercontent.com\",\"cdn.jsdelivr.net\"],\"data_forcada\":\"\",\"slot_forcado\":\"\",\"tabela_fila\":\"tdyQa5PC5YGhLt7P\",\"tabela_historico\":\"siY3iPdRKYx57qgE\"}}];",
+        "jsCode": "return [{json:{\"empresa\":\"Trindayy\",\"instagram\":\"trindayy\",\"ig_user_id\":\"\",\"instagram_api_version\":\"v24.0\",\"instagram_auth\":\"instagram_login\",\"instagram_credential\":{\"id\":\"ulnMSHSbRKQBLRKC\",\"name\":\"Header Auth account\"},\"timezone\":\"America/Sao_Paulo\",\"slots\":[\"10:00\",\"12:00\",\"18:00\"],\"dias_por_lote\":7,\"modo_teste\":true,\"publicacao_autorizada\":false,\"notificacoes_ativas\":false,\"email_alerta\":\"trindadeprobusiness@gmail.com\",\"repository\":\"trindadeprobusiness-wq/trindayy-instagram\",\"content_branch\":\"codex/conteudo-instagram\",\"json_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram/conteudos.json\",\"midia_base_url\":\"https://raw.githubusercontent.com/trindadeprobusiness-wq/trindayy-instagram/codex/conteudo-instagram\",\"media_hosts\":[\"raw.githubusercontent.com\",\"cdn.jsdelivr.net\"],\"data_forcada\":\"\",\"slot_forcado\":\"\",\"tabela_fila\":\"tdyQa5PC5YGhLt7P\",\"tabela_historico\":\"siY3iPdRKYx57qgE\"}}];",
         "mode": "runOnceForAllItems"
       },
       "id": "9c5f96b3-c5e0-491e-9afe-0c3b7f91ef1f",
@@ -76,7 +77,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/EA[A-Za-z0-9]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst rows=$input.all().map(i=>i.json).filter(r=>r.peca_id); return [{json:selectPost(rows,$(\"Config\").first().json)}];",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst rows=$input.all().map(i=>i.json).filter(r=>r.peca_id); return [{json:selectPost(rows,$(\"Config\").first().json)}];",
         "mode": "runOnceForAllItems"
       },
       "id": "d43d785a-cd0a-47c1-bb80-295b72bb4f75",
@@ -586,33 +587,7 @@
     },
     {
       "parameters": {
-        "graphApiVersion": "v24.0",
-        "node": "={{ $(\"Config\").first().json.ig_user_id }}",
-        "options": {
-          "queryParametersJson": "{\"fields\":\"id,username\"}"
-        }
-      },
-      "id": "5c6623c1-abd5-4172-ae06-080a8e31fa68",
-      "name": "Consultar identidade Instagram",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        848,
-        304
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const p=$input.first().json; const c=$(\"Config\").first().json; if(p.username?.toLowerCase()!==c.instagram || String(p.id)!==c.ig_user_id) throw new Error(\"Identidade Instagram divergente: publicação bloqueada\"); return $(\"Escolher peça do slot\").all();",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nvalidateInstagramIdentity($input.first().json,$(\"Config\").first().json); return $(\"Escolher peça do slot\").all();",
         "mode": "runOnceForAllItems"
       },
       "id": "ad86a727-e983-4715-84e4-e3eb74b9945e",
@@ -811,7 +786,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/EA[A-Za-z0-9]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst claim=$(\"Reservar peça antes da API\").first().json;const rows=$input.all().map(i=>i.json);if(!ownsClaim(rows,claim.id,String($execution.id))) return [];return $(\"Escolher peça do slot\").all();",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst claim=$(\"Reservar peça antes da API\").first().json;const rows=$input.all().map(i=>i.json);if(!ownsClaim(rows,claim.id,String($execution.id))) return [];return $(\"Escolher peça do slot\").all();",
         "mode": "runOnceForAllItems"
       },
       "id": "899b79de-955f-4799-87de-083c785d061a",
@@ -840,31 +815,6 @@
     },
     {
       "parameters": {
-        "httpRequestMethod": "POST",
-        "graphApiVersion": "v24.0",
-        "node": "={{ $(\"Config\").first().json.ig_user_id }}",
-        "edge": "media",
-        "options": {
-          "queryParametersJson": "={{ JSON.stringify($(\"Escolher peça do slot\").first().json.container_params) }}"
-        }
-      },
-      "id": "c1917f3a-c73d-4cea-b9e3-496808c2bb23",
-      "name": "Criar container imagem ou Reel",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        560,
-        608
-      ],
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
-    },
-    {
-      "parameters": {
         "jsCode": "return $(\"Escolher peça do slot\").first().json.carrossel.map((params,i)=>({json:{params,ordem:i+1}}));",
         "mode": "runOnceForAllItems"
       },
@@ -889,31 +839,6 @@
         1120,
         608
       ]
-    },
-    {
-      "parameters": {
-        "httpRequestMethod": "POST",
-        "graphApiVersion": "v24.0",
-        "node": "={{ $(\"Config\").first().json.ig_user_id }}",
-        "edge": "media",
-        "options": {
-          "queryParametersJson": "={{ JSON.stringify($json.params) }}"
-        }
-      },
-      "id": "5db106c1-87b0-475a-811c-60b6ca9a16e7",
-      "name": "Criar item do carrossel",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        1408,
-        608
-      ],
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
     },
     {
       "parameters": {
@@ -945,33 +870,7 @@
     },
     {
       "parameters": {
-        "graphApiVersion": "v24.0",
-        "node": "={{ $json.creation_id }}",
-        "options": {
-          "queryParametersJson": "{\"fields\":\"status_code,status\"}"
-        }
-      },
-      "id": "15db78d4-0799-4b1b-9045-35069e2d65bb",
-      "name": "Ver status do slide",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        288,
-        912
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/EA[A-Za-z0-9]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst prev=$(\"Aguardar slide\").item.json;const current=$input.first().json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst prev=$(\"Aguardar slide\").item.json;const current=$input.first().json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];",
         "mode": "runOnceForAllItems"
       },
       "id": "82a42179-d078-4411-bbce-2d39eec0c4e4",
@@ -1025,31 +924,6 @@
         1408,
         912
       ]
-    },
-    {
-      "parameters": {
-        "httpRequestMethod": "POST",
-        "graphApiVersion": "v24.0",
-        "node": "={{ $(\"Config\").first().json.ig_user_id }}",
-        "edge": "media",
-        "options": {
-          "queryParametersJson": "={{ JSON.stringify($json.params) }}"
-        }
-      },
-      "id": "741a8092-8909-4152-af25-3bc60f14d2c2",
-      "name": "Criar container do carrossel",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        1680,
-        912
-      ],
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
     },
     {
       "parameters": {
@@ -1251,33 +1125,7 @@
     },
     {
       "parameters": {
-        "graphApiVersion": "v24.0",
-        "node": "={{ $json.creation_id }}",
-        "options": {
-          "queryParametersJson": "{\"fields\":\"status_code,status\"}"
-        }
-      },
-      "id": "f0f21822-85d6-4c75-87ec-c16a41bab525",
-      "name": "Ver status do container",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        1120,
-        1200
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/EA[A-Za-z0-9]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst prev=$(\"Aguardar processamento\").item.json;const current=$input.first().json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst prev=$(\"Aguardar processamento\").item.json;const current=$input.first().json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];",
         "mode": "runOnceForAllItems"
       },
       "id": "9949e18c-438a-4f15-a0d7-5a86d5d1ad0d",
@@ -1462,31 +1310,6 @@
     },
     {
       "parameters": {
-        "httpRequestMethod": "POST",
-        "graphApiVersion": "v24.0",
-        "node": "={{ $(\"Config\").first().json.ig_user_id }}",
-        "edge": "media_publish",
-        "options": {
-          "queryParametersJson": "={{ JSON.stringify({creation_id:$(\"Container criado\").first().json.creation_id}) }}"
-        }
-      },
-      "id": "27b688ae-3442-477a-bb63-6d446e8b132e",
-      "name": "Publicar no Instagram",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        288,
-        1504
-      ],
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
-    },
-    {
-      "parameters": {
         "jsCode": "if(!$input.first().json.id) throw new Error(\"Resposta ambígua de publicação; revisar manualmente, não repetir\"); return [{json:{ig_media_id:$input.first().json.id,creation_id:$(\"Container criado\").first().json.creation_id}}];",
         "mode": "runOnceForAllItems"
       },
@@ -1654,33 +1477,6 @@
         848,
         1504
       ]
-    },
-    {
-      "parameters": {
-        "graphApiVersion": "v24.0",
-        "node": "={{ $(\"Confirmar ID publicado\").first().json.ig_media_id }}",
-        "options": {
-          "queryParametersJson": "{\"fields\":\"id,permalink\"}"
-        }
-      },
-      "id": "d2eb3ce3-a1f0-454f-9b86-92bf1b488e03",
-      "name": "Pegar link do post",
-      "type": "n8n-nodes-base.facebookGraphApi",
-      "typeVersion": 1,
-      "position": [
-        1120,
-        1504
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 2000,
-      "onError": "continueRegularOutput",
-      "credentials": {
-        "facebookGraphApi": {
-          "id": "NNKiWPk9kas3yrBU",
-          "name": "Meta Trindayy · PENDENTE"
-        }
-      }
     },
     {
       "parameters": {
@@ -2021,7 +1817,7 @@
     },
     {
       "parameters": {
-        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/EA[A-Za-z0-9]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst input=$input.first().json;return [{json:{empresa:\"Trindayy\",peca_id:\"\",data:localNow().data,slot:\"\",tipo:\"\",motivo:redact(input.execution?.error?.message || input.error?.message || \"Falha geral\"),execution_id:String(input.execution?.id || $execution.id)}}];",
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nconst input=$input.first().json;return [{json:{empresa:\"Trindayy\",peca_id:\"\",data:localNow().data,slot:\"\",tipo:\"\",motivo:redact(input.execution?.error?.message || input.error?.message || \"Falha geral\"),execution_id:String(input.execution?.id || $execution.id)}}];",
         "mode": "runOnceForAllItems"
       },
       "id": "1ed5ab2a-ebf2-4949-aa33-629b70f49be8",
@@ -2349,7 +2145,339 @@
       ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/EA[A-Za-z0-9]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nvalidateMediaResponses($input.all().map(i=>i.json),$(\"Escolher peça do slot\").first().json.urls.length); return $(\"Escolher peça do slot\").all();"
+        "jsCode": "function dateOnly(value) {\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(value || '') || new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) !== value) throw new Error('Data inválida: ' + value);\n  return value;\n}\n\nfunction addDays(day, n) {\n  return new Date(Date.parse(dateOnly(day) + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);\n}\n\nfunction localNow(now = new Date()) {\n  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, x.value]));\n  return { data: p.year + '-' + p.month + '-' + p.day, slot: p.hour + ':' + p.minute };\n}\n\nfunction mediaUrl(media, cfg) {\n  const relative = media.caminho_post || media.caminho_projeto;\n  const value = media.url_publica || (relative && cfg.midia_base_url ? cfg.midia_base_url.replace(/\\/$/, '') + '/' + relative.replace(/\\\\/g, '/').split('/').map(encodeURIComponent).join('/') : '');\n  const match = /^https:\\/\\/([a-z0-9.-]+)(\\/[^?#\\s\\\\]*)$/i.exec(value);\n  if (!match) throw new Error('URL deve ser HTTPS estável, sem credencial, query ou fragmento');\n  const hostname = match[1].toLowerCase(), pathname = match[2];\n  if (!cfg.media_hosts.includes(hostname)) throw new Error('Host de mídia não autorizado: ' + hostname);\n  if (/(^|\\/)\\.\\.(\\/|$)/.test(decodeURIComponent(pathname))) throw new Error('Caminho de mídia inválido');\n  return 'https://' + hostname + pathname;\n}\n\nfunction validatePost(post, cfg) {\n  if (!post || !/^[a-zA-Z0-9_-]{3,100}$/.test(post.id || '')) throw new Error('ID da peça inválido');\n  if (typeof post.versao !== 'string' || !post.versao.trim() || post.versao.length > 100) throw new Error('Versão da peça obrigatória');\n  if (post.tipo !== 'FEED') throw new Error('Somente FEED; Stories não são permitidos');\n  if (!['IMAGE', 'REELS', 'CAROUSEL'].includes(post.ig_media_type)) throw new Error('Tipo de mídia não suportado');\n  if (!Array.isArray(post.midias) || !post.midias.length) throw new Error('Peça sem mídia');\n  if (post.ig_media_type === 'CAROUSEL' ? post.midias.length < 2 || post.midias.length > 10 : post.midias.length !== 1) throw new Error('Quantidade de mídias inválida; carrossel aceita 2 a 10');\n  if (typeof post.legenda !== 'string' || !post.legenda.trim() || post.legenda.length > 2200) throw new Error('Legenda obrigatória, até 2200 caracteres');\n  const sorted = post.midias.slice().sort((a, b) => a.ordem - b.ordem);\n  if (sorted.some((m, i) => m.ordem !== i + 1)) throw new Error('Ordem das mídias deve ser única e contínua a partir de 1');\n  const urls = sorted.map(m => mediaUrl(m, cfg));\n  sorted.forEach((m, i) => {\n    if (!/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw new Error('SHA256 obrigatório para cada mídia');\n    const ext = urls[i].toLowerCase();\n    if (!/\\.(jpe?g|mp4)$/.test(ext)) throw new Error('Formato deve ser JPEG ou MP4');\n    if (post.ig_media_type === 'IMAGE' && !/\\.jpe?g$/.test(ext)) throw new Error('IMAGE exige JPEG');\n    if (post.ig_media_type === 'REELS' && !/\\.mp4$/.test(ext)) throw new Error('REELS exige MP4');\n  });\n  const approval = post.aprovacao;\n  if (post.status === 'pronto_para_postar' && (!approval || approval.por !== 'Gabriel' || !approval.em || !Number.isFinite(Date.parse(approval.em)) || approval.versao !== post.versao)) throw new Error('Aprovação do Gabriel precisa identificar data e versão exata');\n  return { ...post, midias: sorted, urls, fingerprint: sorted.map(m => m.sha256).join(':') };\n}\n\nfunction planBatches(calendar, existing, cfg, now = new Date()) {\n  if (calendar.account?.toLowerCase() !== cfg.instagram || calendar.timezone !== cfg.timezone) throw new Error('Calendário pertence a outra conta ou fuso');\n  if (!Array.isArray(calendar.lotes)) throw new Error('Calendário deve conter lotes');\n  if (!Array.isArray(cfg.slots) || cfg.slots.length !== 3 || new Set(cfg.slots).size !== 3 || cfg.slots.some(s => !/^([01]\\d|2[0-3]):[0-5]\\d$/.test(s))) throw new Error('Configure exatamente três horários distintos');\n  const current = localNow(now);\n  const ids = new Set(existing.map(r => r.peca_id));\n  const prints = new Set(existing.map(r => r.fingerprint).filter(Boolean));\n  const taken = new Set(existing.map(r => r.data + 'T' + r.slot));\n  const prepared = calendar.lotes.map(batch => {\n    if (!/^[a-zA-Z0-9_-]{3,100}$/.test(batch.id || '') || !Array.isArray(batch.posts)) throw new Error('Lote inválido');\n    return { ...batch, posts: batch.posts.map(p => validatePost(p, cfg)) };\n  });\n  const result = [];\n  for (const batch of prepared) {\n    const fresh = [];\n    for (const p of batch.posts) {\n      if (p.status !== 'pronto_para_postar' || ids.has(p.id) || prints.has(p.fingerprint)) continue;\n      ids.add(p.id); prints.add(p.fingerprint); fresh.push(p);\n    }\n    let start = batch.inicio ? dateOnly(batch.inicio) : addDays(current.data, 1);\n    if (start < current.data) start = current.data;\n    let cursor = 0;\n    for (let window = 0; cursor < fresh.length && window < 520; window++) {\n      const available = [];\n      for (let day = 0; day < cfg.dias_por_lote; day++) for (const slot of cfg.slots.slice().sort()) {\n        const date = addDays(start, day + window * cfg.dias_por_lote);\n        if (date + 'T' + slot <= current.data + 'T' + current.slot || taken.has(date + 'T' + slot)) continue;\n        available.push({ data: date, slot });\n      }\n      const count = Math.min(available.length, fresh.length - cursor);\n      for (let i = 0; i < count; i++) {\n        const index = Math.floor((i + 0.5) * available.length / count);\n        const scheduled = available[index], p = fresh[cursor++];\n        taken.add(scheduled.data + 'T' + scheduled.slot);\n        const payload = { ...p, ...scheduled, lote_id: batch.id };\n        result.push({ peca_id: p.id, lote_id: batch.id, ...scheduled, fingerprint: p.fingerprint, estado: 'agendado', payload: JSON.stringify(payload) });\n      }\n    }\n    if (cursor < fresh.length) throw new Error('Lote excede horizonte máximo de planejamento');\n  }\n  return result;\n}\n\nfunction selectPost(rows, cfg, now = new Date()) {\n  const current = localNow(now);\n  const data = cfg.data_forcada || current.data, slot = cfg.slot_forcado || current.slot;\n  dateOnly(data);\n  if (!cfg.slots.includes(slot)) return { acao: 'nada', data, slot, motivo: 'Fora dos horários de postagem' };\n  const matches = rows.filter(r => r.data === data && r.slot === slot && r.estado === 'agendado');\n  if (!matches.length) return { acao: 'nada', data, slot, motivo: 'Sem peça programada' };\n  if (matches.length !== 1) return { acao: 'pular', data, slot, motivo: 'Conflito: mais de uma peça neste horário' };\n  try {\n    const p = validatePost(JSON.parse(matches[0].payload), cfg);\n    if (p.id !== matches[0].peca_id || p.fingerprint !== matches[0].fingerprint || p.data !== data || p.slot !== slot) throw new Error('Fila e conteúdo divergentes');\n    if (p.status !== 'pronto_para_postar') throw new Error('Peça não aprovada');\n    return { ...p, peca_id: p.id, data, slot, tipo: p.ig_media_type, acao: cfg.modo_teste ? 'simular' : 'publicar', ...prepareMedia(p) };\n  } catch (e) { return { acao: 'pular', data, slot, peca_id: matches[0].peca_id, motivo: e.message }; }\n}\n\nfunction prepareMedia(p) {\n  if (p.ig_media_type === 'IMAGE') return { container_params: { image_url: p.urls[0], caption: p.legenda }, carrossel: [] };\n  if (p.ig_media_type === 'REELS') return { container_params: { media_type: 'REELS', video_url: p.urls[0], caption: p.legenda, share_to_feed: true }, carrossel: [] };\n  return { container_params: null, carrossel: p.urls.map(url => /\\.mp4$/i.test(url) ? { media_type: 'VIDEO', video_url: url, is_carousel_item: true } : { image_url: url, is_carousel_item: true }) };\n}\n\nfunction ownsClaim(rows, claimId, executionId) {\n  const claims = rows.filter(r => r.resultado === 'reservado').sort((a, b) => Number(a.id) - Number(b.id));\n  return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;\n}\n\nfunction validateInstagramIdentity(profile, cfg) {\n  // Instagram Login's user_id is the professional account ID; id may be app-scoped.\n  const userId = String(profile?.user_id || '');\n  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {\n    throw new Error('Identidade Instagram divergente: publicação bloqueada');\n  }\n  return userId;\n}\n\nfunction containerState(status, attempt, max = 16) {\n  if (status === 'FINISHED') return 'publicar';\n  if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';\n  return 'erro';\n}\n\nfunction validateMediaResponses(responses, expected) {\n  if (responses.length !== expected) throw new Error('Conferência de mídia incompleta');\n  for (const response of responses) {\n    if (response.statusCode !== 200) throw new Error('Mídia indisponível: HTTP ' + response.statusCode);\n    const type = String(response.headers?.['content-type'] || '').toLowerCase();\n    if (!/^(image\\/jpeg|video\\/mp4|application\\/octet-stream)(;|$)/.test(type)) throw new Error('Servidor não retornou mídia JPEG ou MP4');\n    if (response.headers?.['content-length'] === '0') throw new Error('Mídia vazia');\n  }\n  return true;\n}\n\nfunction redact(value) {\n  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\\s*[=:]\\s*[^\\s&,\"}]+/gi, '$1=[REDACTED]').replace(/Bearer\\s+\\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);\n}\n\nvalidateMediaResponses($input.all().map(i=>i.json),$(\"Escolher peça do slot\").first().json.urls.length); return $(\"Escolher peça do slot\").all();"
+      }
+    },
+    {
+      "id": "896cd759-9c35-4fd9-a11a-f34590d3aa8f",
+      "name": "Consultar identidade Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        848,
+        304
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "https://graph.instagram.com/v24.0/me",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"user_id,username\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "85747020-ae83-4bf2-b046-aad3e2422e83",
+      "name": "Criar mídia Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        560,
+        608
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Escolher peça do slot\").first().json.container_params) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "c2504dcb-1501-4403-afa4-be8567d944c7",
+      "name": "Criar slide Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1408,
+        608
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.params) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "8aae94ff-a887-4a3b-9ed0-c3b4811163e6",
+      "name": "Status do slide Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        288,
+        912
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($json.creation_id) + \"\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"status_code,status\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "a1bab32f-44ef-4c09-9d25-1109e02b8d0e",
+      "name": "Criar carrossel Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        912
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.params) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "fc8fd129-2c2d-4871-b9c8-301fa8500690",
+      "name": "Status do container Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        1200
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($json.creation_id) + \"\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"status_code,status\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "42e5cc70-bec5-4550-aa4b-60876f9c6200",
+      "name": "Publicar via Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        288,
+        1504
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Config\").first().json.ig_user_id) + \"/media_publish\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({creation_id:$(\"Container criado\").first().json.creation_id}) }}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "stopWorkflow",
+      "retryOnFail": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "319e3fa2-f8b1-4ff9-93bb-657f4bfd2038",
+      "name": "Consultar link Instagram Login",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        1504
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://graph.instagram.com/v24.0/\" + String($(\"Confirmar ID publicado\").first().json.ig_media_id) + \"\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "{\"fields\":\"id,permalink\"}",
+        "options": {
+          "timeout": 30000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ulnMSHSbRKQBLRKC",
+          "name": "Header Auth account"
+        }
       }
     }
   ],
@@ -2452,28 +2580,6 @@
         ]
       ]
     },
-    "Validar autorização de produção": {
-      "main": [
-        [
-          {
-            "node": "Consultar identidade Instagram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Consultar identidade Instagram": {
-      "main": [
-        [
-          {
-            "node": "Confirmar conta @Trindayy",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Reservar peça antes da API": {
       "main": [
         [
@@ -2518,18 +2624,7 @@
         ],
         [
           {
-            "node": "Criar container imagem ou Reel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Criar container imagem ou Reel": {
-      "main": [
-        [
-          {
-            "node": "Container criado",
+            "node": "Criar mídia Instagram Login",
             "type": "main",
             "index": 0
           }
@@ -2558,18 +2653,7 @@
         ],
         [
           {
-            "node": "Criar item do carrossel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Criar item do carrossel": {
-      "main": [
-        [
-          {
-            "node": "Container do slide criado",
+            "node": "Criar slide Instagram Login",
             "type": "main",
             "index": 0
           }
@@ -2581,28 +2665,6 @@
         [
           {
             "node": "Aguardar slide",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aguardar slide": {
-      "main": [
-        [
-          {
-            "node": "Ver status do slide",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ver status do slide": {
-      "main": [
-        [
-          {
-            "node": "Avaliar processamento do slide",
             "type": "main",
             "index": 0
           }
@@ -2656,28 +2718,6 @@
         ]
       ]
     },
-    "Juntar slides validados": {
-      "main": [
-        [
-          {
-            "node": "Criar container do carrossel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Criar container do carrossel": {
-      "main": [
-        [
-          {
-            "node": "Container criado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Container criado": {
       "main": [
         [
@@ -2705,28 +2745,6 @@
         [
           {
             "node": "Aguardar processamento",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aguardar processamento": {
-      "main": [
-        [
-          {
-            "node": "Ver status do container",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Ver status do container": {
-      "main": [
-        [
-          {
-            "node": "Avaliar processamento do container",
             "type": "main",
             "index": 0
           }
@@ -2769,55 +2787,11 @@
         ]
       ]
     },
-    "Registrar intenção de publicação": {
-      "main": [
-        [
-          {
-            "node": "Publicar no Instagram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Publicar no Instagram": {
-      "main": [
-        [
-          {
-            "node": "Confirmar ID publicado",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Confirmar ID publicado": {
       "main": [
         [
           {
             "node": "Registrar publicado imediatamente",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Registrar publicado imediatamente": {
-      "main": [
-        [
-          {
-            "node": "Pegar link do post",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Pegar link do post": {
-      "main": [
-        [
-          {
-            "node": "Normalizar link",
             "type": "main",
             "index": 0
           }
@@ -2966,6 +2940,160 @@
           }
         ]
       ]
+    },
+    "Validar autorização de produção": {
+      "main": [
+        [
+          {
+            "node": "Consultar identidade Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar identidade Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Confirmar conta @Trindayy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar mídia Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Container criado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar slide Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Container do slide criado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar slide": {
+      "main": [
+        [
+          {
+            "node": "Status do slide Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status do slide Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Avaliar processamento do slide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar slides validados": {
+      "main": [
+        [
+          {
+            "node": "Criar carrossel Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar carrossel Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Container criado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aguardar processamento": {
+      "main": [
+        [
+          {
+            "node": "Status do container Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status do container Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Avaliar processamento do container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar intenção de publicação": {
+      "main": [
+        [
+          {
+            "node": "Publicar via Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publicar via Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Confirmar ID publicado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar publicado imediatamente": {
+      "main": [
+        [
+          {
+            "node": "Consultar link Instagram Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar link Instagram Login": {
+      "main": [
+        [
+          {
+            "node": "Normalizar link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -2992,36 +3120,36 @@
         "Registrar bloqueio",
         "Registrar horário sem peça",
         "Validar autorização de produção",
-        "Consultar identidade Instagram",
+        "Consultar identidade Instagram Login",
         "Confirmar conta @Trindayy",
         "Reservar peça antes da API",
         "Ler reservas desta peça",
         "Eleger única execução autorizada",
         "É carrossel?",
-        "Criar container imagem ou Reel",
+        "Criar mídia Instagram Login",
         "Separar slides em ordem",
         "Processar um slide por vez",
-        "Criar item do carrossel",
+        "Criar slide Instagram Login",
         "Container do slide criado",
         "Aguardar slide",
-        "Ver status do slide",
+        "Status do slide Instagram Login",
         "Avaliar processamento do slide",
         "Slide pronto?",
         "Slide validado",
         "Juntar slides validados",
-        "Criar container do carrossel",
+        "Criar carrossel Instagram Login",
         "Container criado",
         "Registrar container antes de publicar",
         "Retomar container",
         "Aguardar processamento",
-        "Ver status do container",
+        "Status do container Instagram Login",
         "Avaliar processamento do container",
         "Container pronto?",
         "Registrar intenção de publicação",
-        "Publicar no Instagram",
+        "Publicar via Instagram Login",
         "Confirmar ID publicado",
         "Registrar publicado imediatamente",
-        "Pegar link do post",
+        "Consultar link Instagram Login",
         "Normalizar link",
         "Registrar link do post",
         "Registrar erro de processamento",

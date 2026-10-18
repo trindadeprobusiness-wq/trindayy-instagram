@@ -2,7 +2,7 @@
 
 Você cria os vídeos e as imagens. Esta automação recebe os lotes aprovados, distribui o conteúdo pela semana e prepara a publicação no **@trindayy**, sem Stories e sem geração de conteúdo.
 
-**Estado da entrega:** implementado e testado localmente e em simulação no n8n. Os três workflows continuam **inativos**. Publicação real depende da criação/autenticação do aplicativo Meta, da credencial exclusiva da conta e de uma peça real aprovada para homologação. Não confundir os testes com publicação comprovada.
+**Estado em 18/10/2026:** aplicativo Trindayy existente; publicador adaptado ao Instagram Login direto, com 35 testes locais aprovados e simulação no n8n. Os três workflows continuam **inativos**. A consulta real de identidade ainda retorna erro 190 (`Invalid OAuth 2.0 Access Token`); aguarda correção do token no n8n. Não houve publicação real.
 
 ## Uso semanal
 
@@ -29,7 +29,7 @@ O painel trata cada arquivo como um post. Para carrosséis, use o manifesto JSON
 | Diagnóstico de conexão, somente leitura | [Trindayy · Verificar conexão Meta](https://carteiraemdia.app.n8n.cloud/workflow/HdybZ75WJco4q4bE) |
 | Fila n8n | `trindayy_fila` / `tdyQa5PC5YGhLt7P` |
 | Histórico n8n | `trindayy_publicacoes` / `siY3iPdRKYx57qgE` |
-| Credencial Meta exclusiva, vazia | `Meta Trindayy · PENDENTE` / `NNKiWPk9kas3yrBU` |
+| Credencial Instagram Login | `Header Auth account` / `ulnMSHSbRKQBLRKC` |
 
 O formulário de entrada exige login n8n e acesso de execução ao projeto. Não há endpoint público anônimo que aceite conteúdos para a conta. Enquanto o workflow estiver inativo, use o formulário de teste no editor ou a execução manual via conector; o formulário de produção requer ativação.
 
@@ -58,7 +58,7 @@ O Trello existente do Gabriel continua sendo o quadro editorial. O campo opciona
 
 Somente `status=pronto_para_postar`, com `aprovacao.por=Gabriel`, data e versão exata, pode entrar na fila. Rascunhos e peças em revisão são ignorados. Falta de mídia, formato inválido, carrossel incompleto, mais de um post no mesmo horário e conta divergente bloqueiam a operação.
 
-O importador ignora IDs e fingerprints já registrados e preserva os horários existentes. Antes de publicar, o workflow confere `id` e `username` retornados pela Meta e valida as URLs públicas por HEAD. A identidade deve corresponder ao @trindayy e ao ID configurado; não basta existir uma credencial.
+O importador ignora IDs e fingerprints já registrados e preserva os horários existentes. Antes de publicar, o workflow confere `user_id` e `username` retornados pela Meta e valida as URLs públicas por HEAD. No Instagram Login, o `id` pode ser relativo ao aplicativo; o destino de publicação deve usar o `user_id` profissional. A identidade deve corresponder ao @trindayy e ao ID configurado; não basta existir uma credencial.
 
 Cada tentativa real registra uma reserva durável antes da criação do container. Em concorrência, somente a menor ID de reserva dessa peça pode avançar. As reservas não expiram automaticamente. A intenção de publicação é gravada antes de `media_publish`; o ID publicado é salvo imediatamente depois, antes da consulta de permalink. Se houver timeout ou resultado ambíguo, o workflow não repete a publicação automaticamente. Isso prefere bloquear uma peça para revisão a correr o risco de publicar duas vezes.
 
@@ -74,15 +74,15 @@ Contas verificadas durante a configuração:
 - Facebook administrador: **Evandro Lopes**, confirmado pelo Gabriel.
 - Credencial antiga do n8n: acesso somente à página Carteira em Dia e ao **@carteiraemdia.com.br**. Ela não é usada nos nodes de publicação do Trindayy.
 
-O assistente de criação do app **Trindayy Publicador** foi preenchido com `trindadeprobusiness@gmail.com`, caso de uso Instagram e nenhum portfólio associado arbitrariamente. O Gabriel autorizou o aceite dos termos. Ao concluir, a Meta exigiu reconfirmação de senha do Facebook; a criação ainda não foi confirmada e não existe App ID comprovado nesta entrega. A senha deve ser inserida pelo proprietário diretamente no navegador.
+Foi confirmado no navegador o app **Trindayy**, Meta App ID `1611956463109278`, Instagram App ID `1305433924981111`, com o caso de uso Instagram. Gabriel aceitou o convite de testador do Instagram. O publicador usa **Instagram Login direto**: oito operações HTTP em `https://graph.instagram.com/v24.0`, com a credencial Header Auth exclusiva. A consulta de identidade é `GET /me?fields=user_id,username`; criação de mídia e publicação usam corpo JSON e não repetem POST automaticamente. A [documentação oficial de publicação](https://developers.facebook.com/documentation/instagram-platform/content-publishing) descreve o host e as permissões desse login.
 
-Após concluir essa autenticação:
+Para concluir a conexão e homologar:
 
-1. Conclua a criação e confirme o aplicativo em **Meus apps**.
-2. Configure o acesso à conta profissional @trindayy. Este publicador preserva a integração **Instagram API com Facebook Login**, usando os nodes Facebook Graph API e a versão `v24.0` do original. Confirme a página vinculada, os ativos corretos e as permissões de publicação. Não usar token da Carteira em Dia.
-3. Insira a credencial exclusivamente no cadastro `Meta Trindayy · PENDENTE` do n8n, renomeando-o depois da validação. Nunca inclua tokens em código, manifesto, chat, Git ou exportação JSON.
-4. Obtenha o ID Instagram pela API autorizada e confira o username. Preencha `ig_user_id` em `config.json` e nos nodes Config dos workflows. Login no Instagram pelo navegador não fornece automaticamente uma credencial API ao n8n.
-5. Se optar por **Instagram Login direto**, valide e adapte host, autenticação e permissões antes de ativar: não assumir compatibilidade do token com os nodes de Facebook Login desta versão.
+1. No caso de uso Instagram do app Trindayy, configure `instagram_business_basic` e `instagram_business_content_publish`. Aceitar a função de testador não comprova que o token possui essas permissões.
+2. Gere o token da conta @trindayy em **Configuração da API com login do Instagram**. Não usar token do Facebook, chave secreta do app ou token da Carteira em Dia.
+3. Na credencial `Header Auth account`, preencha o campo **Name** com `Authorization` e **Value** com `Bearer ` seguido do token completo. O nome visível da credencial é separado do campo Name. Nunca inclua tokens em código, manifesto, chat, Git ou exportação JSON.
+4. Execute **Trindayy · Verificar conexão Meta**. Só prossiga se o resultado seguro retornar `conectado=true`, `username=trindayy` e `ig_user_id` profissional. Depois preencha esse ID em `config.json` e nos nodes Config dos workflows. `ig_user_id` está vazio até a validação real.
+5. Consulte o limite de publicação da conta por GET antes de autorizar um teste real. Registre o prazo de expiração informado na geração do token e providencie sua renovação no n8n antes do vencimento; não há renovação automática nesta entrega.
 6. Envie uma peça real com aprovação explícita. Rode a seleção em modo de teste com `data_forcada` e `slot_forcado` e confira todos os parâmetros e o destino.
 7. Depois da aprovação específica para o teste real e da verificação da conta, autorize a publicação dessa peça. Remova as variáveis forçadas e configure `modo_teste=false` e `publicacao_autorizada=true`. O bloqueio exige execução de produção; execução manual comum não publica.
 8. Ative os gatilhos somente com autorização. Ative o importador antes do publicador e confira a fila preenchida. O resumo diário pode ser ativado separadamente.

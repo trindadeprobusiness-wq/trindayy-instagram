@@ -116,6 +116,15 @@ export function ownsClaim(rows, claimId, executionId) {
   return !!claims.length && String(claims[0].id) === String(claimId) && claims[0].execution_id === executionId;
 }
 
+export function validateInstagramIdentity(profile, cfg) {
+  // Instagram Login's user_id is the professional account ID; id may be app-scoped.
+  const userId = String(profile?.user_id || '');
+  if (String(profile?.username || '').toLowerCase() !== cfg.instagram || !/^\d{5,30}$/.test(userId) || userId !== cfg.ig_user_id) {
+    throw new Error('Identidade Instagram divergente: publicação bloqueada');
+  }
+  return userId;
+}
+
 export function containerState(status, attempt, max = 16) {
   if (status === 'FINISHED') return 'publicar';
   if (status === 'IN_PROGRESS' && attempt < max) return 'aguardar';
@@ -134,5 +143,5 @@ export function validateMediaResponses(responses, expected) {
 }
 
 export function redact(value) {
-  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\s*[=:]\s*[^\s&,"}]+/gi, '$1=[REDACTED]').replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]').replace(/EA[A-Za-z0-9]{30,}/g, '[REDACTED]').slice(0, 1000);
+  return String(value || '').replace(/(access_token|authorization|api[_-]?key|secret|token)\s*[=:]\s*[^\s&,"}]+/gi, '$1=[REDACTED]').replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]').replace(/(?:EA|IG)[A-Za-z0-9_-]{30,}/g, '[REDACTED]').slice(0, 1000);
 }

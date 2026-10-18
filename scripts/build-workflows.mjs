@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { instagramRequest } from '../src/instagram-api.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const cfg = JSON.parse(await readFile(path.join(root, 'config.json'), 'utf8'));
@@ -24,7 +25,10 @@ function graph(name) {
     return n(name, 'dataTable', 1.1, parameters, always ? { alwaysOutputData: true } : {});
   }
   const route = (name, expression, outputs) => n(name, 'switch', 3.4, { mode: 'expression', numberOutputs: outputs, output: X(expression) });
-  const fb = (name, method, target, edge = '', query = {}, extra = {}) => n(name, 'facebookGraphApi', 1, { httpRequestMethod: method, graphApiVersion: 'v24.0', node: target, edge, options: { queryParametersJson: typeof query === 'string' ? query : JSON.stringify(query) } }, { credentials: { facebookGraphApi: { id: 'NNKiWPk9kas3yrBU', name: 'Meta Trindayy · PENDENTE' } }, ...extra });
+  const ig = (name, method, target, edge = '', data = {}, extra = {}) => {
+    const request = instagramRequest({ method, target, edge, data, credential: cfg.instagram_credential, version: cfg.instagram_api_version });
+    return n(name, 'httpRequest', 4.5, request.parameters, { credentials: request.credentials, ...extra });
+  };
   const wait = (name, amount) => n(name, 'wait', 1.1, { amount, unit: 'seconds' });
   function config(name = 'Config') { return code(name, 'return [{json:' + JSON.stringify(cfg) + '}];'); }
   function audit(name, outcome, ref = 'Escolher peça do slot', overrides = {}) {
@@ -36,7 +40,7 @@ function graph(name) {
     const mail = n('E-mail Trindayy', 'gmail', 2.2, { resource: 'message', operation: 'send', sendTo: cfg.email_alerta, subject: '[Trindayy] Publicador Instagram', emailType: 'text', message: X(messageExpression), options: { appendAttribution: false } }, { credentials: { gmailOAuth2: { id: 'J66yXFCEYegKJdhk', name: 'Gmail account' } }, onError: 'continueRegularOutput' });
     link(source, ready); link(ready, mail, 0);
   }
-  return { w, n, code, link, table, route, fb, wait, config, audit, notifications };
+  return { w, n, code, link, table, route, ig, wait, config, audit, notifications };
 }
 
 function intake() {
@@ -63,7 +67,7 @@ function intake() {
 
 function publisher() {
   const g = graph('Instagram · Publicador Trindayy');
-  const { n, code, link, table, route, fb, wait, config, audit, notifications } = g;
+  const { n, code, link, table, route, ig, wait, config, audit, notifications } = g;
   const manual = n('Teste manual sem publicação', 'manualTrigger', 1);
   const schedule = n('10h · 12h · 18h (Brasília)', 'scheduleTrigger', 1.4, { rule: { interval: cfg.slots.map(s => ({ field: 'days', daysInterval: 1, triggerAtHour: Number(s.split(':')[0]), triggerAtMinute: Number(s.split(':')[1]) })) } });
   const c = config();
@@ -74,8 +78,8 @@ function publisher() {
   const skipped = audit('Registrar bloqueio', 'bloqueado');
   const none = audit('Registrar horário sem peça', 'sem_peca');
   const gate = code('Validar autorização de produção', 'const c=$("Config").first().json; if(c.modo_teste!==false || c.publicacao_autorizada!==true || !/^\\d{5,30}$/.test(c.ig_user_id || "")) throw new Error("Trindayy: produção bloqueada; conectar conta correta e obter autorização antes de ativar."); if(c.data_forcada || c.slot_forcado || $execution.mode!=="production") throw new Error("Publicação real exige execução de produção sem data/slot forçados."); return $input.all();');
-  const identity = fb('Consultar identidade Instagram', 'GET', X('$("Config").first().json.ig_user_id'), '', { fields: 'id,username' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 });
-  const check = code('Confirmar conta @Trindayy', 'const p=$input.first().json; const c=$("Config").first().json; if(p.username?.toLowerCase()!==c.instagram || String(p.id)!==c.ig_user_id) throw new Error("Identidade Instagram divergente: publicação bloqueada"); return $("Escolher peça do slot").all();');
+  const identity = ig('Consultar identidade Instagram Login', 'GET', 'me', '', { fields: 'user_id,username' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 });
+  const check = code('Confirmar conta @Trindayy', core + '\nvalidateInstagramIdentity($input.first().json,$("Config").first().json); return $("Escolher peça do slot").all();');
   const urls = code('Separar mídias para conferir', 'return $("Escolher peça do slot").first().json.urls.map(url=>({json:{url}}));');
   const head = n('Conferir mídia pública', 'httpRequest', 4.5, { method: 'HEAD', url: X('$json.url'), options: { timeout: 30000, response: { response: { fullResponse: true, neverError: true, responseFormat: 'text' } } } }, { retryOnFail: true, maxTries: 2, waitBetweenTries: 2000 });
   const available = code('Confirmar todas as mídias', core + '\nvalidateMediaResponses($input.all().map(i=>i.json),$("Escolher peça do slot").first().json.urls.length); return $("Escolher peça do slot").all();');
@@ -83,30 +87,30 @@ function publisher() {
   const claims = table('Ler reservas desta peça', 'get', cfg.tabela_historico, { filters: [['peca_id', X('$("Escolher peça do slot").first().json.peca_id')]] });
   const elect = code('Eleger única execução autorizada', core + '\nconst claim=$("Reservar peça antes da API").first().json;const rows=$input.all().map(i=>i.json);if(!ownsClaim(rows,claim.id,String($execution.id))) return [];return $("Escolher peça do slot").all();');
   const carousel = route('É carrossel?', '$json.tipo === "CAROUSEL" ? 0 : 1', 2);
-  const single = fb('Criar container imagem ou Reel', 'POST', X('$("Config").first().json.ig_user_id'), 'media', X('JSON.stringify($("Escolher peça do slot").first().json.container_params)'));
+  const single = ig('Criar mídia Instagram Login', 'POST', X('$("Config").first().json.ig_user_id'), 'media', X('JSON.stringify($("Escolher peça do slot").first().json.container_params)'));
   const slides = code('Separar slides em ordem', 'return $("Escolher peça do slot").first().json.carrossel.map((params,i)=>({json:{params,ordem:i+1}}));');
   const loop = n('Processar um slide por vez', 'splitInBatches', 3, { batchSize: 1, options: {} });
-  const child = fb('Criar item do carrossel', 'POST', X('$("Config").first().json.ig_user_id'), 'media', X('JSON.stringify($json.params)'));
+  const child = ig('Criar slide Instagram Login', 'POST', X('$("Config").first().json.ig_user_id'), 'media', X('JSON.stringify($json.params)'));
   const childctx = code('Container do slide criado', 'if(!$json.id) throw new Error("Container de slide não retornou ID"); return [{json:{creation_id:$json.id,ordem:$("Processar um slide por vez").item.json.ordem,tentativas:0}}];');
   const childwait = wait('Aguardar slide', 15);
-  const childstatus = fb('Ver status do slide', 'GET', X('$json.creation_id'), '', { fields: 'status_code,status' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 });
+  const childstatus = ig('Status do slide Instagram Login', 'GET', X('$json.creation_id'), '', { fields: 'status_code,status' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 });
   const childnorm = code('Avaliar processamento do slide', core + '\nconst prev=$("Aguardar slide").item.json;const current=$json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];');
   const childroute = route('Slide pronto?', '({publicar:0,aguardar:1,erro:2})[$json.rota] ?? 2', 3);
   const childdone = code('Slide validado', 'return [{json:{id:$json.creation_id,ordem:$json.ordem}}];');
   const gather = code('Juntar slides validados', 'const s=$input.all().map(i=>i.json).sort((a,b)=>a.ordem-b.ordem); const p=$("Escolher peça do slot").first().json; if(s.length!==p.carrossel.length || s.some(x=>!x.id)) throw new Error("Carrossel incompleto");return [{json:{params:{media_type:"CAROUSEL",children:s.map(x=>x.id).join(","),caption:p.legenda}}}];');
-  const parent = fb('Criar container do carrossel', 'POST', X('$("Config").first().json.ig_user_id'), 'media', X('JSON.stringify($json.params)'));
+  const parent = ig('Criar carrossel Instagram Login', 'POST', X('$("Config").first().json.ig_user_id'), 'media', X('JSON.stringify($json.params)'));
   const ctx = code('Container criado', 'if(!$json.id) throw new Error("Container sem ID"); return [{json:{creation_id:$json.id,tentativas:0}}];');
   const logcontainer = audit('Registrar container antes de publicar', 'container_criado');
   const restore = code('Retomar container', 'return $("Container criado").all();');
   const processing = wait('Aguardar processamento', 15);
-  const status = fb('Ver status do container', 'GET', X('$json.creation_id'), '', { fields: 'status_code,status' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 });
+  const status = ig('Status do container Instagram Login', 'GET', X('$json.creation_id'), '', { fields: 'status_code,status' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 });
   const statusnorm = code('Avaliar processamento do container', core + '\nconst prev=$("Aguardar processamento").item.json;const current=$json;return [{json:{...prev,tentativas:prev.tentativas+1,rota:containerState(current.status_code,prev.tentativas+1),status_code:current.status_code,motivo:redact(current.status)}}];');
   const statusroute = route('Container pronto?', '({publicar:0,aguardar:1,erro:2})[$json.rota] ?? 2', 3);
   const logintent = audit('Registrar intenção de publicação', 'publicando');
-  const publish = fb('Publicar no Instagram', 'POST', X('$("Config").first().json.ig_user_id'), 'media_publish', X('JSON.stringify({creation_id:$("Container criado").first().json.creation_id})'));
+  const publish = ig('Publicar via Instagram Login', 'POST', X('$("Config").first().json.ig_user_id'), 'media_publish', X('JSON.stringify({creation_id:$("Container criado").first().json.creation_id})'));
   const receipt = code('Confirmar ID publicado', 'if(!$json.id) throw new Error("Resposta ambígua de publicação; revisar manualmente, não repetir"); return [{json:{ig_media_id:$json.id,creation_id:$("Container criado").first().json.creation_id}}];');
   const published = audit('Registrar publicado imediatamente', 'publicado');
-  const permalink = fb('Pegar link do post', 'GET', X('$("Confirmar ID publicado").first().json.ig_media_id'), '', { fields: 'id,permalink' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000, onError: 'continueRegularOutput' });
+  const permalink = ig('Consultar link Instagram Login', 'GET', X('$("Confirmar ID publicado").first().json.ig_media_id'), '', { fields: 'id,permalink' }, { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000, onError: 'continueRegularOutput' });
   const linkresult = code('Normalizar link', 'const p=$("Confirmar ID publicado").first().json;return [{json:{...p,permalink:$json.permalink || "",motivo:$json.permalink ? "" : "Post publicado; consulta do link falhou. Não republicar."}}];');
   const linksaved = audit('Registrar link do post', 'link_consultado');
   const failure = audit('Registrar erro de processamento', 'erro_container');
@@ -158,7 +162,7 @@ function sdk(w) {
     const { type, typeVersion: version, id, ...config } = n;
     delete config.credentials;
     let text = literal(config);
-    if (n.credentials) text = text.slice(0, -1) + ',credentials:{' + Object.entries(n.credentials).map(([k, v]) => JSON.stringify(k) + ':newCredential(' + JSON.stringify(v.name) + ')').join(',') + '}}';
+    if (n.credentials) text = text.slice(0, -1) + ',credentials:{' + Object.entries(n.credentials).map(([k, v]) => JSON.stringify(k) + ':' + (v.id ? JSON.stringify({ id: v.id, name: v.name }) : 'newCredential(' + JSON.stringify(v.name) + ')')).join(',') + '}}';
     const sample = { ...cfg, acao: 'nada', manifesto: null, peca_id: '', lote_id: '', payload: '', data: '', slot: '', estado: '', fingerprint: '', creation_id: '', ig_media_id: '', permalink: '', motivo: '', tipo: '', params: {}, rota: 'aguardar', tentativas: 0, mensagem: '', id: 1, url: '' };
     lines.push('const ' + ids.get(n.name) + '=' + (/Trigger$/.test(type) ? 'trigger' : 'node') + '({type:' + JSON.stringify(type) + ',version:' + version + ',config:' + text + ',output:[{json:' + JSON.stringify(sample) + '}]});');
   }

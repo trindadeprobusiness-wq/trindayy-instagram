@@ -1,8 +1,8 @@
 # Entrega técnica · Publicador Trindayy
 
-Referência: 17/10/2026, America/Sao_Paulo. Pasta: `C:\Users\Gabri\trindayy-instagram`.
+Referência: 18/10/2026, America/Sao_Paulo. Pasta: `C:\Users\Gabri\trindayy-instagram`.
 
-**Estado:** implementação e testes seguros concluídos; produção bloqueada pela autenticação Meta. Três workflows criados e inativos. Nenhuma publicação real ou envio de e-mail.
+**Estado:** publicador migrado para Instagram Login direto e validado em simulação. A consulta real de identidade retorna erro 190 (`Invalid OAuth 2.0 Access Token`); conexão ainda não comprovada. Três workflows inativos. Nenhuma publicação real ou envio de e-mail.
 
 ## A–B. Destino e ambiente encontrado
 
@@ -24,7 +24,7 @@ Você produz o conteúdo → painel local para arquivos e legendas → aprovaç�
 | Diagnóstico somente leitura | [HdybZ75WJco4q4bE](https://carteiraemdia.app.n8n.cloud/workflow/HdybZ75WJco4q4bE) |
 | Fila técnica | `trindayy_fila` / `tdyQa5PC5YGhLt7P` |
 | Histórico | `trindayy_publicacoes` / `siY3iPdRKYx57qgE` |
-| Credencial nova, vazia | `Meta Trindayy · PENDENTE` / `NNKiWPk9kas3yrBU` |
+| Credencial Instagram Login | `Header Auth account` / `ulnMSHSbRKQBLRKC` |
 | Painel local | http://127.0.0.1:4187 |
 
 Os JSONs completos e importáveis estão em `workflows/`; schema e exemplo de rascunho em `schema/` e `examples/`. O código foi implementado separadamente do NEXOOLS. O README contém instruções semanais, configuração e recuperação.
@@ -41,11 +41,11 @@ Com 21 peças há três posts por dia. Com sete há um por dia às 12h; com 14 h
 
 GitHub público e manifesto vazio criados após autorização; URL pública retornou HTTP 200. O n8n leu e normalizou o manifesto na execução 57. Data Tables foram lidas e gravadas de fato nos testes. O painel usa o login GitHub existente pelo Git Credential Manager, sem solicitar tokens.
 
-Todos os nodes Meta do publicador usam o cadastro exclusivo vazio; a credencial da referência foi removida deles. Gmail está associado, com envio desligado. Trello permanece como quadro editorial, com campo opcional `trello_url`; não foi implementada sincronização automática de cards.
+Os oito nodes de API do publicador foram migrados de Facebook Graph API para HTTP Request com `graph.instagram.com/v24.0`, Header Auth existente e corpo JSON nas escritas. Não há token nos parâmetros. Redirecionamentos dessas requisições são desativados. A identidade usa `user_id` profissional; o campo `id` relativo ao app não é aceito como substituto. Gmail está associado, com envio desligado. Trello permanece como quadro editorial, sem sincronização automática de cards.
 
 ## H. Testes e evidências
 
-**31 testes locais passaram, zero falhas.** Abrangem distribuição, excedentes, horários ocupados, deduplicação, versão aprovada, Stories, carrosséis, mídia ausente, URLs, status HTTP, reserva sob concorrência, limites de polling, timezone e controles do painel. Comando: `node --test tests/*.test.mjs`.
+**35 testes locais passaram, zero falhas.** Abrangem distribuição, deduplicação, aprovação, Stories, carrosséis, URLs, reserva sob concorrência, polling, timezone, controles do painel, identificação `user_id` e autenticação por referência de credencial. Comando: `node --test tests/*.test.mjs`.
 
 Os três códigos SDK foram validados no n8n, sem erros ou avisos na rodada final. Fuso, histórico de execução, agrupamentos e limite de 300s foram salvos.
 
@@ -60,6 +60,10 @@ Os três códigos SDK foram validados no n8n, sem erros ou avisos na rodada fina
 | 56 | Peça fictícia marcada `teste_encerrado`, fora da seleção produtiva |
 | 58 | Simulação final do publicador com fila de teste fixada; sucesso |
 | 59 | Falha esperada: tentativa sem autorização/ID foi bloqueada antes da API Meta |
+| 61 | Diagnóstico detectou Name do cabeçalho preenchido com o nome da conta; corrigido para Authorization no n8n |
+| 62, 65 | GET real na API Instagram retornou HTTP 400 / código 190, token inválido; conexão não validada |
+| 63 | Simulação após migração passou, com serviços externos e Data Tables fixados; sem API ou escrita de fila |
+| 64 | Bloqueio de produção funcionou antes de qualquer operação Meta |
 
 As aprovações em fixtures são dados sintéticos de teste e não aprovam conteúdo real. `evidencias/verificacao-final.json` contém apenas resultados resumidos, sem dados de autenticação.
 
@@ -67,11 +71,11 @@ As aprovações em fixtures são dados sintéticos de teste e não aprovam conte
 
 ## I. Pendências
 
-O assistente do app **Trindayy Publicador** foi preenchido, sem portfólio associado arbitrariamente, e o aceite dos termos foi autorizado. Ao criar, a Meta exigiu reconfirmação de senha do Facebook. **Não há App ID confirmado.** O proprietário deve concluir a autenticação na aba Meta, sem enviar senha no chat.
+O app existente **Trindayy** foi confirmado no painel Meta: App ID `1611956463109278`; Instagram App ID `1305433924981111`. O convite de testador foi aceito pelo proprietário. Esses avanços não comprovam autenticação API. A credencial permanece no n8n e precisa de um token aceito pela consulta de identidade.
 
 Depois, é necessário obter o acesso API da conta profissional @trindayy e preencher a credencial exclusivamente no n8n; conferir o ID Instagram retornado pela API; fornecer uma peça real aprovada; autorizar seu teste real e, após validação, a ativação da rotina. Notificações exigem teste autorizado de envio.
 
-O publicador mantém Facebook Login e os nodes Graph API da referência. Se for escolhido Instagram Login direto, host, permissões e autenticação precisam ser adaptados e validados antes da ativação. Login no Instagram pelo navegador não fornece automaticamente credencial API ao n8n.
+O publicador já foi adaptado ao Instagram Login direto, conforme a [documentação oficial Meta](https://developers.facebook.com/documentation/instagram-platform/content-publishing). Ainda faltam confirmar a identidade real, conferir permissão de publicação e limite por GET, homologar uma peça real aprovada e obter autorização de ativação. Não há renovação automática do token: seu prazo informado na geração deve ser acompanhado pelo operador.
 
 ## J. Operação e recuperação
 
